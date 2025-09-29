@@ -26,6 +26,19 @@
         text-decoration: none;
         font-weight: 500;
       }
+      nav form {
+        display: inline;
+      }
+      .link-button {
+        border: none;
+        background: none;
+        color: white;
+        font: inherit;
+        cursor: pointer;
+        padding: 0;
+        margin-right: 1rem;
+        text-decoration: none;
+      }
       main {
         max-width: 1100px;
         margin: 2rem auto;
@@ -101,7 +114,10 @@
             <a href="{% url 'admin:index' %}">Админка</a>
           {% endif %}
           {% if user.is_authenticated %}
-            <a href="{% url 'logout' %}">Выйти ({{ user.get_username }})</a>
+            <form method="post" action="{% url 'logout' %}" style="display: inline">
+              {% csrf_token %}
+              <button type="submit" class="link-button">Выйти ({{ user.get_username }})</button>
+            </form>
           {% else %}
             <a href="{% url 'login' %}">Войти</a>
           {% endif %}

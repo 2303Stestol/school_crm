@@ -7,7 +7,15 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import CourseForm, LessonForm, PaymentForm, SubscriptionForm
+from .forms import (
+    CourseForm,
+    EnrollmentForm,
+    LessonForm,
+    PaymentForm,
+    StudentForm,
+    SubscriptionForm,
+)
+
 from .models import (
     Attendance,
     Course,
@@ -117,6 +125,7 @@ def course_detail(request, pk: int):
             "enrollments": course.enrollments.all(),
             "lessons": course.lessons.all(),
             "can_edit": _can_manage_course(request.user, course),
+            "can_manage_enrollments": is_admin(request.user),
         },
     )
 
@@ -237,6 +246,50 @@ def course_create(request):
         messages.success(request, "Курс создан")
         return redirect("crm:course_detail", pk=course.pk)
     return render(request, "crm/course_form.html", {"form": form})
+
+
+@login_required
+def student_create(request):
+    if not is_admin(request.user):
+        return _forbidden()
+    form = StudentForm(request.POST or None)
+    course_id = request.GET.get("course")
+    if course_id and request.method != "POST":
+        form.fields["courses"].initial = Course.objects.filter(pk=course_id)
+    if request.method == "POST" and form.is_valid():
+        student = form.save()
+        form.save_m2m()
+        courses = form.cleaned_data.get("courses") or []
+        for course in courses:
+            Enrollment.objects.get_or_create(
+                student=student,
+                course=course,
+                defaults={"start_date": timezone.now().date()},
+            )
+        messages.success(request, "Ученик создан")
+        if course_id:
+            return redirect("crm:course_detail", pk=course_id)
+        return redirect("crm:student_detail", pk=student.pk)
+    return render(request, "crm/student_form.html", {"form": form})
+
+
+@login_required
+def enrollment_create(request):
+    if not is_admin(request.user):
+        return _forbidden()
+    form = EnrollmentForm(request.POST or None)
+    course_id = request.GET.get("course")
+    if course_id:
+        course = Course.objects.filter(pk=course_id).first()
+        if course:
+            form.fields["course"].queryset = Course.objects.filter(pk=course_id)
+            if request.method != "POST":
+                form.fields["course"].initial = course
+    if request.method == "POST" and form.is_valid():
+        enrollment = form.save()
+        messages.success(request, "Ученик записан на курс")
+        return redirect("crm:course_detail", pk=enrollment.course_id)
+    return render(request, "crm/enrollment_form.html", {"form": form})
 
 
 @login_required

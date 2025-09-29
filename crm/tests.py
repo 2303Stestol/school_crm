@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from crm import models
+from crm.forms import EnrollmentForm
 
 
 class ModelTests(TestCase):
@@ -59,4 +60,43 @@ class ModelTests(TestCase):
 
     def test_student_guardian_link(self) -> None:
         self.assertIn(self.parent_user, self.student.guardians.all())
+
+    def test_student_can_be_enrolled_to_multiple_courses(self) -> None:
+        first_enrollment = models.Enrollment.objects.create(
+            student=self.student,
+            course=self.course,
+            start_date=date(2024, 1, 1),
+        )
+        second_course = models.Course.objects.create(
+            title="Геометрия",
+            description="Геометрические задачи",
+            teacher=self.teacher_user,
+        )
+        second_enrollment = models.Enrollment.objects.create(
+            student=self.student,
+            course=second_course,
+            start_date=date(2024, 2, 1),
+        )
+        self.assertTrue(first_enrollment.is_active)
+        self.assertTrue(second_enrollment.is_active)
+        self.assertEqual(self.student.enrollments.count(), 2)
+
+    def test_enrollment_form_blocks_duplicate_active(self) -> None:
+        models.Enrollment.objects.create(
+            student=self.student,
+            course=self.course,
+            start_date=date(2024, 1, 1),
+        )
+        form = EnrollmentForm(
+            data={
+                "student": self.student.pk,
+                "course": self.course.pk,
+                "start_date": "2024-03-01",
+                "end_date": "",
+                "is_active": True,
+            }
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("__all__", form.errors)
+        self.assertIn("у этого ученика уже есть активная запись", form.errors["__all__"][0].lower())
 
