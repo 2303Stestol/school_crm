@@ -1,0 +1,37 @@
+{% extends "crm/base.html" %}
+{% block title %}{{ course.title }} — {{ lesson.date|date:"d.m.Y" }}{% endblock %}
+{% block content %}
+  <h1>{{ course.title }} — {{ lesson.date|date:"d.m.Y" }}</h1>
+  <p>Тема: {{ lesson.topic|default:"—" }}</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ formset.management_form }}
+    <table>
+      <thead>
+        <tr>
+          <th>Ученик</th>
+          <th>Статус</th>
+          <th>Решение задач</th>
+          <th>Комментарий</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for form in formset %}
+          <tr>
+            <td>{{ form.instance.student.full_name }}</td>
+            <td>{{ form.status }}</td>
+            <td>{{ form.task_status }}</td>
+            <td>{{ form.comment }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p><button class="btn" type="submit">Сохранить</button></p>
+  </form>
+  <p>
+    <strong>Статусы задач:</strong>
+    {% for key, label in task_status_choices.choices %}
+      {{ label }} — <code>{{ key }}</code>{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  </p>
+{% endblock %}
