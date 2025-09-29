@@ -15,6 +15,7 @@ from .forms import (
     StudentForm,
     SubscriptionForm,
 )
+
 from .models import (
     Attendance,
     Course,
