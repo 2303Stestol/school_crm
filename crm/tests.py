@@ -39,7 +39,29 @@ class ModelTests(TestCase):
         lesson = models.Lesson.objects.create(course=self.course, date=date(2024, 3, 10))
         attendance = models.Attendance.objects.create(lesson=lesson, student=self.student)
         self.assertIn("Иванов Иван Иванович", str(attendance))
-        self.assertEqual(attendance.task_status, models.LessonTaskStatus.PENDING)
+        self.assertEqual(attendance.exercise_progress()["total"], 0)
+
+    def test_exercise_progress_counts(self) -> None:
+        lesson = models.Lesson.objects.create(course=self.course, date=date(2024, 4, 1))
+        attendance = models.Attendance.objects.create(lesson=lesson, student=self.student)
+        exercise_a = models.Exercise.objects.create(lesson=lesson, title="Упражнение 1")
+        exercise_b = models.Exercise.objects.create(lesson=lesson, title="Упражнение 2")
+        models.ExerciseResult.objects.create(
+            exercise=exercise_a,
+            student=self.student,
+            status=models.ExerciseStatus.SOLVED,
+        )
+        models.ExerciseResult.objects.create(
+            exercise=exercise_b,
+            student=self.student,
+            status=models.ExerciseStatus.PARTIAL,
+        )
+        progress = attendance.exercise_progress()
+        self.assertEqual(progress["total"], 2)
+        self.assertEqual(progress["solved"], 1)
+        self.assertEqual(progress["partial"], 1)
+        self.assertEqual(progress["pending"], 0)
+
 
     def test_payment_creation(self) -> None:
         subscription = models.Subscription.objects.create(

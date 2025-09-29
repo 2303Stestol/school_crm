@@ -5,13 +5,15 @@
   <p><strong>Телефон для связи:</strong> {{ student.guardian_phone|default:"—" }}</p>
   <section>
     <h2>Посещаемость</h2>
-    <table>
+    <table class="sheet-table">
+
       <thead>
         <tr>
           <th>Дата</th>
           <th>Курс</th>
           <th>Статус</th>
-          <th>Задачи</th>
+          <th>Упражнения</th>
+
           <th>Комментарий</th>
         </tr>
       </thead>
@@ -21,7 +23,18 @@
             <td>{{ attendance.lesson.date|date:"d.m.Y" }}</td>
             <td>{{ attendance.lesson.course.title }}</td>
             <td>{{ attendance.get_status_display }}</td>
-            <td>{{ attendance.get_task_status_display }}</td>
+            <td>
+              {% with progress=attendance.exercise_progress %}
+                {% if progress.total %}
+                  <span class="chip chip--solved">{{ progress.solved }}/{{ progress.total }} решено</span>
+                  {% if progress.partial %}<span class="chip chip--partial">{{ progress.partial }} частично</span>{% endif %}
+                  {% if progress.pending %}<span class="chip chip--pending">{{ progress.pending }} не решено</span>{% endif %}
+                {% else %}
+                  <span class="chip">Без упражнений</span>
+                {% endif %}
+              {% endwith %}
+            </td>
+
             <td>{{ attendance.comment|default:"—" }}</td>
           </tr>
         {% empty %}
@@ -34,7 +47,8 @@
   </section>
   <section>
     <h2>Абонементы</h2>
-    <table>
+    <table class="sheet-table">
+
       <thead>
         <tr>
           <th>Курс</th>
@@ -63,7 +77,8 @@
   </section>
   <section>
     <h2>Платежи</h2>
-    <table>
+    <table class="sheet-table">
+
       <thead>
         <tr>
           <th>Дата</th>

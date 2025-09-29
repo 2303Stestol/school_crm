@@ -34,23 +34,24 @@ class LessonAdmin(admin.ModelAdmin):
 
 @admin.register(models.Attendance)
 class AttendanceAdmin(admin.ModelAdmin):
-    list_display = ("lesson", "student", "status", "task_status", "comment")
-    list_filter = ("lesson__course", "status", "task_status")
+    list_display = ("lesson", "student", "status", "comment")
+    list_filter = ("lesson__course", "status")
     search_fields = ("student__last_name", "lesson__course__title")
 
 
-@admin.register(models.Task)
-class TaskAdmin(admin.ModelAdmin):
-    list_display = ("title", "course", "due_date")
-    list_filter = ("course", "due_date")
-    search_fields = ("title", "course__title")
+@admin.register(models.Exercise)
+class ExerciseAdmin(admin.ModelAdmin):
+    list_display = ("lesson", "title", "order")
+    list_filter = ("lesson__course",)
+    search_fields = ("title", "lesson__course__title")
 
 
-@admin.register(models.TaskSubmission)
-class TaskSubmissionAdmin(admin.ModelAdmin):
-    list_display = ("task", "student", "status", "solved_at")
-    list_filter = ("status", "task__course")
-    search_fields = ("student__last_name", "task__title")
+@admin.register(models.ExerciseResult)
+class ExerciseResultAdmin(admin.ModelAdmin):
+    list_display = ("exercise", "student", "status", "comment")
+    list_filter = ("status", "exercise__lesson__course")
+    search_fields = ("student__last_name", "exercise__title")
+
 
 
 @admin.register(models.Subscription)

@@ -11,7 +11,8 @@
       <a class="btn" href="{% url 'crm:payment_create' %}">Добавить платёж</a>
     </p>
     <h2>Курсы</h2>
-    <table>
+    <table class="sheet-table">
+
       <thead>
         <tr>
           <th>Название</th>
@@ -33,25 +34,31 @@
         {% endfor %}
       </tbody>
     </table>
-    <div style="display: grid; gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
-      <section>
+    <div style="display: grid; gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+      <section class="sheet-card">
         <h3>Последние абонементы</h3>
-        <ul>
+        <ul style="margin: 0; padding-left: 1.2rem; color: #3c4043;">
           {% for subscription in recent_subscriptions %}
-            <li>
-              {{ subscription.student.full_name }} — {{ subscription.course.title }}
-              ({{ subscription.start_date }} – {{ subscription.end_date|default:"без даты" }})
+            <li style="margin-bottom: 0.6rem;">
+              <strong>{{ subscription.student.full_name }}</strong><br />
+              {{ subscription.course.title }} — c {{ subscription.start_date|date:"d.m.Y" }}
+              {% if subscription.end_date %} по {{ subscription.end_date|date:"d.m.Y" }}{% endif %}
+
             </li>
           {% empty %}
             <li>Пока нет абонементов</li>
           {% endfor %}
         </ul>
       </section>
-      <section>
+      <section class="sheet-card">
         <h3>Последние платежи</h3>
-        <ul>
+        <ul style="margin: 0; padding-left: 1.2rem; color: #3c4043;">
           {% for payment in recent_payments %}
-            <li>{{ payment.student.full_name }} — {{ payment.amount }} ₽ ({{ payment.paid_at|date:"d.m.Y" }})</li>
+            <li style="margin-bottom: 0.6rem;">
+              <strong>{{ payment.student.full_name }}</strong><br />
+              {{ payment.amount }} ₽ — {{ payment.paid_at|date:"d.m.Y" }} ({{ payment.get_method_display }})
+            </li>
+
           {% empty %}
             <li>Пока нет платежей</li>
           {% endfor %}
@@ -76,11 +83,12 @@
         {% endwith %}
         <p><a class="btn" href="{% url 'crm:course_detail' course.pk %}">Перейти к курсу</a></p>
         <h3>Недавние занятия</h3>
-        <ul>
+        <ul style="margin: 0; padding-left: 1.2rem; color: #3c4043;">
           {% for lesson in course.lessons.all|slice:":5" %}
-            <li>
-              {{ lesson.date|date:"d.m.Y" }} — {{ lesson.topic|default:"Без темы" }}
-              <a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Отметить посещаемость</a>
+            <li style="margin-bottom: 0.75rem;">
+              <strong>{{ lesson.date|date:"d.m.Y" }}</strong> — {{ lesson.topic|default:"Без темы" }}<br />
+              <a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Открыть таблицу</a>
+
             </li>
           {% empty %}
             <li>Пока нет занятий</li>
@@ -98,13 +106,22 @@
           <a href="{% url 'crm:student_detail' student.pk %}">{{ student.full_name }}</a>
         </h2>
         <h3>Последние занятия</h3>
-        <ul>
+        <ul style="margin: 0; padding-left: 1.2rem; color: #3c4043;">
           {% for attendance in student.attendances.all|slice:":5" %}
-            <li>
-              {{ attendance.lesson.date|date:"d.m.Y" }} — {{ attendance.lesson.course.title }}:
-              {{ attendance.get_status_display }};
-              задачи: {{ attendance.get_task_status_display }}
-            </li>
+            {% with progress=attendance.exercise_progress %}
+              <li style="margin-bottom: 0.75rem;">
+                <strong>{{ attendance.lesson.date|date:"d.m.Y" }}</strong> — {{ attendance.lesson.course.title }}<br />
+                Посещение: {{ attendance.get_status_display }}<br />
+                {% if progress.total %}
+                  <span class="chip chip--solved">{{ progress.solved }}/{{ progress.total }} решено</span>
+                  {% if progress.partial %}<span class="chip chip--partial">{{ progress.partial }} частично</span>{% endif %}
+                  {% if progress.pending %}<span class="chip chip--pending">{{ progress.pending }} не решено</span>{% endif %}
+                {% else %}
+                  <span class="chip">Без упражнений</span>
+                {% endif %}
+              </li>
+            {% endwith %}
+
           {% empty %}
             <li>Данных о посещаемости пока нет</li>
           {% endfor %}

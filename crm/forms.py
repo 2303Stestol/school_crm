@@ -1,7 +1,8 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from .models import Course, Enrollment, Lesson, Payment, Student, Subscription
+from .models import Course, Enrollment, Exercise, Lesson, Payment, Student, Subscription
+
 
 
 class DateInput(forms.DateInput):
@@ -108,3 +109,13 @@ class PaymentForm(forms.ModelForm):
     class Meta:
         model = Payment
         fields = ["student", "subscription", "amount", "paid_at", "method", "comment"]
+
+
+class ExerciseForm(forms.ModelForm):
+    class Meta:
+        model = Exercise
+        fields = ["title", "description", "order"]
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 2}),
+        }
+

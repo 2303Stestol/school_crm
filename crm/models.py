@@ -115,11 +115,6 @@ class AttendanceStatus(models.TextChoices):
     EXCUSED = "excused", "Уважительная причина"
 
 
-class LessonTaskStatus(models.TextChoices):
-    PENDING = "pending", "Не проверено"
-    SOLVED = "solved", "Решено"
-    NOT_SOLVED = "not_solved", "Не решено"
-
 
 class Attendance(TimestampedModel):
     lesson = models.ForeignKey(
@@ -134,12 +129,7 @@ class Attendance(TimestampedModel):
         choices=AttendanceStatus.choices,
         default=AttendanceStatus.PRESENT,
     )
-    task_status = models.CharField(
-        "Решение задач",
-        max_length=16,
-        choices=LessonTaskStatus.choices,
-        default=LessonTaskStatus.PENDING,
-    )
+
     comment = models.CharField("Комментарий", max_length=255, blank=True)
 
     class Meta:
@@ -152,53 +142,79 @@ class Attendance(TimestampedModel):
         return f"{self.lesson} — {self.student.full_name}: {self.get_status_display()}"
 
 
-class Task(TimestampedModel):
-    course = models.ForeignKey(
-        Course, related_name="tasks", on_delete=models.CASCADE, verbose_name="Курс"
+    def set_prefetched_results(self, results: list["ExerciseResult"]) -> None:
+        self._prefetched_results = results
+
+    def exercise_results(self):
+        if hasattr(self, "_prefetched_results"):
+            return self._prefetched_results
+        return ExerciseResult.objects.filter(
+            exercise__lesson=self.lesson, student=self.student
+        ).select_related("exercise")
+
+    def exercise_progress(self) -> dict[str, int]:
+        results = list(self.exercise_results())
+        total = len(results)
+        solved = sum(1 for result in results if result.status == ExerciseStatus.SOLVED)
+        partial = sum(1 for result in results if result.status == ExerciseStatus.PARTIAL)
+        pending = total - solved - partial
+        return {
+            "total": total,
+            "solved": solved,
+            "partial": partial,
+            "pending": pending,
+        }
+
+
+class ExerciseStatus(models.TextChoices):
+    PENDING = "pending", "Не решено"
+    SOLVED = "solved", "Решено"
+    PARTIAL = "partial", "Частично"
+
+
+class Exercise(TimestampedModel):
+    lesson = models.ForeignKey(
+        Lesson, related_name="exercises", on_delete=models.CASCADE, verbose_name="Занятие"
     )
     title = models.CharField("Название", max_length=255)
     description = models.TextField("Описание", blank=True)
-    due_date = models.DateField("Срок сдачи", blank=True, null=True)
+    order = models.PositiveIntegerField("Порядок", default=0)
 
     class Meta:
-        ordering = ("-due_date", "title")
-        verbose_name = "Задача"
-        verbose_name_plural = "Задачи"
+        ordering = ("order", "created_at")
+        verbose_name = "Упражнение"
+        verbose_name_plural = "Упражнения"
 
     def __str__(self) -> str:
-        return f"{self.title} ({self.course.title})"
+        return f"{self.lesson} — {self.title}"
 
 
-class SubmissionStatus(models.TextChoices):
-    ASSIGNED = "assigned", "Назначено"
-    SUBMITTED = "submitted", "Сдано"
-    APPROVED = "approved", "Проверено"
-
-
-class TaskSubmission(TimestampedModel):
-    task = models.ForeignKey(
-        Task, related_name="submissions", on_delete=models.CASCADE, verbose_name="Задача"
+class ExerciseResult(TimestampedModel):
+    exercise = models.ForeignKey(
+        Exercise, related_name="results", on_delete=models.CASCADE, verbose_name="Упражнение"
     )
     student = models.ForeignKey(
-        Student, related_name="task_submissions", on_delete=models.CASCADE, verbose_name="Ученик"
+        Student,
+        related_name="exercise_results",
+        on_delete=models.CASCADE,
+        verbose_name="Ученик",
     )
     status = models.CharField(
         "Статус",
         max_length=16,
-        choices=SubmissionStatus.choices,
-        default=SubmissionStatus.ASSIGNED,
+        choices=ExerciseStatus.choices,
+        default=ExerciseStatus.PENDING,
     )
-    solved_at = models.DateTimeField("Дата сдачи", blank=True, null=True)
     comment = models.CharField("Комментарий", max_length=255, blank=True)
 
     class Meta:
-        ordering = ("-solved_at",)
-        verbose_name = "Решение задачи"
-        verbose_name_plural = "Решения задач"
-        unique_together = ("task", "student")
+        ordering = ("-updated_at",)
+        verbose_name = "Результат упражнения"
+        verbose_name_plural = "Результаты упражнений"
+        unique_together = ("exercise", "student")
 
     def __str__(self) -> str:
-        return f"{self.student.full_name} — {self.task.title}"
+        return f"{self.student.full_name} — {self.exercise.title}"
 
 
 class Subscription(TimestampedModel):

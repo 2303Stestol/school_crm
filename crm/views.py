@@ -1,27 +1,31 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db.models import Prefetch, Q
-from django.forms import modelformset_factory
+from django.db.models import Max, Prefetch, Q
+from django.db import transaction
+
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from .forms import (
     CourseForm,
+    ExerciseForm,
     EnrollmentForm,
     LessonForm,
     PaymentForm,
     StudentForm,
     SubscriptionForm,
 )
-
 from .models import (
     Attendance,
+    AttendanceStatus,
     Course,
     Enrollment,
+    Exercise,
+    ExerciseResult,
+    ExerciseStatus,
     Lesson,
-    LessonTaskStatus,
     Payment,
     Student,
     Subscription,
@@ -75,20 +79,26 @@ def dashboard(request):
             .order_by("title"),
         }
     elif is_parent(user):
-        context = {
-            "role": "parent",
-            "students": user.students.prefetch_related(
+        students = list(
+            user.students.prefetch_related(
                 Prefetch(
                     "attendances",
-                    queryset=Attendance.objects.select_related("lesson", "lesson__course").order_by(
-                        "-lesson__date"
-                    ),
+                    queryset=
+                    Attendance.objects.select_related("lesson", "lesson__course")
+                    .prefetch_related("lesson__exercises")
+                    .order_by("-lesson__date"),
                 ),
                 Prefetch(
                     "subscriptions",
                     queryset=Subscription.objects.select_related("course").order_by("-start_date"),
                 ),
-            ).order_by("last_name"),
+            ).order_by("last_name")
+        )
+        for student in students:
+            _attach_results_for_student(student)
+        context = {
+            "role": "parent",
+            "students": students,
         }
     else:
         context = {"role": "guest"}
@@ -99,11 +109,30 @@ def _can_manage_course(user, course: Course) -> bool:
     return is_admin(user) or (is_teacher(user) and course.teacher_id == user.id)
 
 
+def _attach_results_for_student(student: Student) -> None:
+    attendances = list(student.attendances.all())
+    if not attendances:
+        return
+    lesson_ids = {attendance.lesson_id for attendance in attendances}
+    results = (
+        ExerciseResult.objects.filter(student=student, exercise__lesson_id__in=lesson_ids)
+        .select_related("exercise")
+        .order_by("exercise__order", "exercise__created_at")
+    )
+    by_lesson: dict[int, list[ExerciseResult]] = {}
+    for result in results:
+        by_lesson.setdefault(result.exercise.lesson_id, []).append(result)
+    for attendance in attendances:
+        attendance.set_prefetched_results(by_lesson.get(attendance.lesson_id, []))
+
 @login_required
 def course_detail(request, pk: int):
     course = get_object_or_404(
         Course.objects.select_related("teacher").prefetch_related(
-            Prefetch("lessons", queryset=Lesson.objects.order_by("-date")),
+            Prefetch(
+                "lessons",
+                queryset=Lesson.objects.prefetch_related("exercises").order_by("-date"),
+            ),
             Prefetch(
                 "enrollments",
                 queryset=Enrollment.objects.select_related("student").order_by("student__last_name"),
@@ -152,7 +181,8 @@ def lesson_create(request):
 @login_required
 def lesson_manage(request, pk: int):
     lesson = get_object_or_404(
-        Lesson.objects.select_related("course", "course__teacher"),
+        Lesson.objects.select_related("course", "course__teacher")
+        .prefetch_related("exercises"),
         pk=pk,
     )
     if not _can_manage_course(request.user, lesson.course):
@@ -164,26 +194,64 @@ def lesson_manage(request, pk: int):
         .select_related("student")
         .order_by("student__last_name")
     )
-    for enrollment in enrollments:
-        Attendance.objects.get_or_create(lesson=lesson, student=enrollment.student)
+    students = [enrollment.student for enrollment in enrollments]
+    attendances = [
+        Attendance.objects.get_or_create(lesson=lesson, student=enrollment.student)[0]
+        for enrollment in enrollments
+    ]
 
-    AttendanceFormSet = modelformset_factory(
-        Attendance,
-        fields=("status", "task_status", "comment"),
-        extra=0,
-    )
-    queryset = Attendance.objects.filter(lesson=lesson).select_related("student").order_by(
-        "student__last_name"
-    )
+    exercises = list(lesson.exercises.order_by("order", "created_at"))
+    for exercise in exercises:
+        for student in students:
+            ExerciseResult.objects.get_or_create(exercise=exercise, student=student)
 
-    if request.method == "POST":
-        formset = AttendanceFormSet(request.POST, queryset=queryset)
-        if formset.is_valid():
-            formset.save()
-            messages.success(request, "Посещаемость сохранена")
+    result_lookup: dict[int, dict[int, ExerciseResult]] = {}
+    result_queryset = (
+        ExerciseResult.objects.filter(exercise__lesson=lesson, student__in=students)
+        .select_related("exercise", "student")
+    )
+    for res in result_queryset:
+        result_lookup.setdefault(res.student_id, {})[res.exercise_id] = res
+
+    if request.method == "POST" and request.POST.get("action") == "add_exercise":
+        exercise_form = ExerciseForm(request.POST, prefix="exercise")
+        if exercise_form.is_valid():
+            new_exercise = exercise_form.save(commit=False)
+            new_exercise.lesson = lesson
+            if new_exercise.order == 0:
+                new_exercise.order = (lesson.exercises.aggregate(Max("order"))["order__max"] or 0) + 1
+            new_exercise.save()
+            messages.success(request, "Упражнение добавлено")
             return redirect("crm:lesson_manage", pk=lesson.pk)
+    elif request.method == "POST":
+        exercise_form = ExerciseForm(prefix="exercise")
+        status_choices = {choice[0] for choice in AttendanceStatus.choices}
+        exercise_choices = {choice[0] for choice in ExerciseStatus.choices}
+        with transaction.atomic():
+            for attendance in attendances:
+                status_key = f"attendance-status-{attendance.student_id}"
+                comment_key = f"attendance-comment-{attendance.student_id}"
+                status_value = request.POST.get(status_key)
+                if status_value in status_choices:
+                    attendance.status = status_value
+                attendance.comment = request.POST.get(comment_key, "")
+                attendance.save()
+            for exercise in exercises:
+                for student in students:
+                    result = result_lookup.get(student.id, {}).get(exercise.id)
+                    if result is None:
+                        result = ExerciseResult.objects.get(exercise=exercise, student=student)
+                        result_lookup.setdefault(student.id, {})[exercise.id] = result
+                    key = f"exercise-{exercise.id}-student-{student.id}"
+                    status_value = request.POST.get(key)
+                    if status_value in exercise_choices:
+                        result.status = status_value
+                    result.comment = request.POST.get(f"{key}-comment", "")
+                    result.save()
+        messages.success(request, "Данные по занятию сохранены")
+        return redirect("crm:lesson_manage", pk=lesson.pk)
     else:
-        formset = AttendanceFormSet(queryset=queryset)
+        exercise_form = ExerciseForm(prefix="exercise")
 
     return render(
         request,
@@ -191,8 +259,14 @@ def lesson_manage(request, pk: int):
         {
             "lesson": lesson,
             "course": lesson.course,
-            "formset": formset,
-            "task_status_choices": LessonTaskStatus,
+            "attendances": attendances,
+            "students": students,
+            "exercises": exercises,
+            "result_lookup": result_lookup,
+            "attendance_statuses": AttendanceStatus.choices,
+            "exercise_statuses": ExerciseStatus.choices,
+            "exercise_form": exercise_form,
+            "table_columns": 3 + max(len(exercises), 1),
         },
     )
 
@@ -203,9 +277,10 @@ def student_detail(request, pk: int):
         Student.objects.prefetch_related(
             Prefetch(
                 "attendances",
-                queryset=Attendance.objects.select_related("lesson", "lesson__course").order_by(
-                    "-lesson__date"
-                ),
+                queryset=
+                Attendance.objects.select_related("lesson", "lesson__course")
+                .prefetch_related("lesson__exercises")
+                .order_by("-lesson__date"),
             ),
             Prefetch(
                 "subscriptions",
@@ -222,6 +297,8 @@ def student_detail(request, pk: int):
         return _forbidden()
     if not (is_admin(user) or is_teacher(user) or is_parent(user)):
         return _forbidden()
+
+    _attach_results_for_student(student)
 
     return render(
         request,
