@@ -17,6 +17,7 @@
   <section>
     <h2>Ученики</h2>
     <table class="sheet-table">
+
       <thead>
         <tr>
           <th>ФИО</th>
@@ -42,11 +43,13 @@
   <section>
     <h2>Занятия</h2>
     <table class="sheet-table">
+
       <thead>
         <tr>
           <th>Дата</th>
           <th>Тема</th>
           <th>Упражнений</th>
+
           {% if can_edit %}
             <th>Действия</th>
           {% endif %}
@@ -58,6 +61,7 @@
             <td>{{ lesson.date|date:"d.m.Y" }}</td>
             <td>{{ lesson.topic|default:"—" }}</td>
             <td>{{ lesson.exercises.all|length }}</td>
+
             {% if can_edit %}
               <td><a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Отметить посещаемость</a></td>
             {% endif %}

@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db.models import Max, Prefetch, Q
 from django.db import transaction
+
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -123,7 +124,6 @@ def _attach_results_for_student(student: Student) -> None:
         by_lesson.setdefault(result.exercise.lesson_id, []).append(result)
     for attendance in attendances:
         attendance.set_prefetched_results(by_lesson.get(attendance.lesson_id, []))
-
 
 @login_required
 def course_detail(request, pk: int):

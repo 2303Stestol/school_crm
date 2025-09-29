@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from .models import Course, Enrollment, Exercise, Lesson, Payment, Student, Subscription
 
 
+
 class DateInput(forms.DateInput):
     input_type = "date"
 
@@ -117,3 +118,4 @@ class ExerciseForm(forms.ModelForm):
         widgets = {
             "description": forms.Textarea(attrs={"rows": 2}),
         }
+

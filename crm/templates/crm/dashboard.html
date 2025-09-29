@@ -12,6 +12,7 @@
     </p>
     <h2>Курсы</h2>
     <table class="sheet-table">
+
       <thead>
         <tr>
           <th>Название</th>
@@ -42,6 +43,7 @@
               <strong>{{ subscription.student.full_name }}</strong><br />
               {{ subscription.course.title }} — c {{ subscription.start_date|date:"d.m.Y" }}
               {% if subscription.end_date %} по {{ subscription.end_date|date:"d.m.Y" }}{% endif %}
+
             </li>
           {% empty %}
             <li>Пока нет абонементов</li>
@@ -56,6 +58,7 @@
               <strong>{{ payment.student.full_name }}</strong><br />
               {{ payment.amount }} ₽ — {{ payment.paid_at|date:"d.m.Y" }} ({{ payment.get_method_display }})
             </li>
+
           {% empty %}
             <li>Пока нет платежей</li>
           {% endfor %}
@@ -85,6 +88,7 @@
             <li style="margin-bottom: 0.75rem;">
               <strong>{{ lesson.date|date:"d.m.Y" }}</strong> — {{ lesson.topic|default:"Без темы" }}<br />
               <a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Открыть таблицу</a>
+
             </li>
           {% empty %}
             <li>Пока нет занятий</li>
@@ -117,6 +121,7 @@
                 {% endif %}
               </li>
             {% endwith %}
+
           {% empty %}
             <li>Данных о посещаемости пока нет</li>
           {% endfor %}

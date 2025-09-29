@@ -53,6 +53,7 @@ class ExerciseResultAdmin(admin.ModelAdmin):
     search_fields = ("student__last_name", "exercise__title")
 
 
+
 @admin.register(models.Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
     list_display = ("student", "course", "lessons_included", "price", "is_active")

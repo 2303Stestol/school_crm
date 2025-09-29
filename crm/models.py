@@ -115,6 +115,7 @@ class AttendanceStatus(models.TextChoices):
     EXCUSED = "excused", "Уважительная причина"
 
 
+
 class Attendance(TimestampedModel):
     lesson = models.ForeignKey(
         Lesson, related_name="attendances", on_delete=models.CASCADE, verbose_name="Занятие"
@@ -128,6 +129,7 @@ class Attendance(TimestampedModel):
         choices=AttendanceStatus.choices,
         default=AttendanceStatus.PRESENT,
     )
+
     comment = models.CharField("Комментарий", max_length=255, blank=True)
 
     class Meta:
@@ -138,6 +140,7 @@ class Attendance(TimestampedModel):
 
     def __str__(self) -> str:
         return f"{self.lesson} — {self.student.full_name}: {self.get_status_display()}"
+
 
     def set_prefetched_results(self, results: list["ExerciseResult"]) -> None:
         self._prefetched_results = results

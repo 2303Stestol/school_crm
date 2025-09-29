@@ -62,6 +62,7 @@ class ModelTests(TestCase):
         self.assertEqual(progress["partial"], 1)
         self.assertEqual(progress["pending"], 0)
 
+
     def test_payment_creation(self) -> None:
         subscription = models.Subscription.objects.create(
             student=self.student,
