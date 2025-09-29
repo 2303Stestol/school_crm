@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}CRM кружка{% endblock %}</title>
+    <style>
+      :root {
+        font-family: "Roboto", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+        --sheet-border: #dadce0;
+        --sheet-header-bg: #f8fbff;
+        --sheet-highlight: #0b57d0;
+        --sheet-background: #f1f3f4;
+        --sheet-text: #202124;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--sheet-background);
+        color: var(--sheet-text);
+      }
+      header {
+        background: var(--sheet-highlight);
+        color: #fff;
+        padding: 0.9rem 2.5rem;
+        box-shadow: 0 2px 6px rgba(11, 87, 208, 0.3);
+      }
+      header strong {
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      nav a,
+      nav .link-button {
+        color: #fff;
+        margin-left: 1rem;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      nav form {
+        display: inline;
+      }
+      .link-button {
+        border: none;
+        background: none;
+        font: inherit;
+        cursor: pointer;
+        padding: 0;
+      }
+      main {
+        width: min(1200px, 94vw);
+        margin: 2.5rem auto;
+        background: #fff;
+        padding: 2rem 2.5rem;
+        border-radius: 14px;
+        border: 1px solid var(--sheet-border);
+        box-shadow: 0 14px 40px rgba(60, 64, 67, 0.18);
+      }
+      h1,
+      h2,
+      h3 {
+        font-weight: 600;
+        letter-spacing: 0.015em;
+        margin-top: 0;
+      }
+      a {
+        color: var(--sheet-highlight);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .sheet-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid var(--sheet-border);
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 3px 12px rgba(60, 64, 67, 0.12);
+        margin-bottom: 1.5rem;
+      }
+      .sheet-card {
+        background: #fff;
+        border: 1px solid var(--sheet-border);
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        box-shadow: 0 6px 18px rgba(60, 64, 67, 0.14);
+      }
+      .sheet-table thead th {
+        background: var(--sheet-header-bg);
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        color: #5f6368;
+      }
+      .sheet-table th,
+      .sheet-table td {
+        border-right: 1px solid var(--sheet-border);
+        border-bottom: 1px solid var(--sheet-border);
+        padding: 0.65rem 0.75rem;
+        font-size: 0.95rem;
+      }
+      .sheet-table th:last-child,
+      .sheet-table td:last-child {
+        border-right: none;
+      }
+      .sheet-table tbody tr:nth-child(even) {
+        background: #f8f9fa;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.55rem 0.95rem;
+        border-radius: 8px;
+        background: var(--sheet-highlight);
+        color: #fff;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+      }
+      .btn:hover {
+        box-shadow: 0 4px 14px rgba(11, 87, 208, 0.3);
+      }
+      .btn-secondary {
+        background: #5f6368;
+      }
+      form label {
+        display: block;
+        margin-top: 1.25rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #3c4043;
+      }
+      form input,
+      form select,
+      form textarea {
+        width: 100%;
+        padding: 0.65rem 0.75rem;
+        border-radius: 8px;
+        border: 1px solid var(--sheet-border);
+        box-sizing: border-box;
+        font-size: 0.95rem;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+      }
+      form input:focus,
+      form select:focus,
+      form textarea:focus {
+        outline: none;
+        border-color: var(--sheet-highlight);
+        box-shadow: 0 0 0 3px rgba(11, 87, 208, 0.2);
+      }
+      .message {
+        background: #e6f4ea;
+        color: #0b8043;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        border: 1px solid #c3e6cb;
+        margin-bottom: 1.25rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 68px;
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: #e8eaed;
+        color: #3c4043;
+      }
+      .chip--solved {
+        background: #e6f4ea;
+        color: #0b8043;
+      }
+      .chip--partial {
+        background: #fff7e6;
+        color: #c26401;
+      }
+      .chip--pending {
+        background: #fce8e6;
+        color: #d93025;
+      }
+      .sheet-scroll {
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+      }
+      footer {
+        text-align: center;
+        padding: 2rem;
+        color: #5f6368;
+        font-size: 0.85rem;
+      }
+    </style>
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body>
+    <header>
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <div>
+          <strong>CRM математического кружка</strong>
+        </div>
+        <nav>
+          <a href="{% url 'crm:dashboard' %}">Главная</a>
+          {% if user.is_authenticated and user.is_staff %}
+            <a href="{% url 'admin:index' %}">Админка</a>
+          {% endif %}
+          {% if user.is_authenticated %}
+            <form method="post" action="{% url 'logout' %}" style="display: inline">
+              {% csrf_token %}
+              <button type="submit" class="link-button">Выйти ({{ user.get_username }})</button>
+            </form>
+          {% else %}
+            <a href="{% url 'login' %}">Войти</a>
+          {% endif %}
+        </nav>
+      </div>
+    </header>
+    <main>
+      {% for message in messages %}
+        <div class="message">{{ message }}</div>
+      {% endfor %}
+      {% block content %}{% endblock %}
+    </main>
+    <footer>© {% now "Y" %} Математический кружок</footer>
+  </body>
+</html>

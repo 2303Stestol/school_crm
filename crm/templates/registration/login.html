@@ -1,0 +1,16 @@
+{% extends "crm/base.html" %}
+{% block title %}Вход{% endblock %}
+{% block content %}
+  <h1>Вход</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <label for="id_username">Имя пользователя</label>
+    {{ form.username }}
+    {% for error in form.username.errors %}<div style="color: #dc2626;">{{ error }}</div>{% endfor %}
+    <label for="id_password">Пароль</label>
+    {{ form.password }}
+    {% for error in form.password.errors %}<div style="color: #dc2626;">{{ error }}</div>{% endfor %}
+    <p><button class="btn" type="submit">Войти</button></p>
+  </form>
+{% endblock %}
