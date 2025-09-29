@@ -1,0 +1,25 @@
+{% extends "crm/base.html" %}
+{% block title %}Новый ученик{% endblock %}
+{% block content %}
+  <h1>Добавить ученика</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <div>
+        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+        {{ field }}
+        {% if field.help_text %}
+          <small style="display:block;color:#6b7280;">{{ field.help_text }}</small>
+        {% endif %}
+        {% for error in field.errors %}
+          <div style="color:#dc2626;">{{ error }}</div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+    <div style="margin-top:1.5rem;">
+      <button type="submit" class="btn">Сохранить</button>
+      <a href="{% url 'crm:dashboard' %}" class="btn btn-secondary">Отмена</a>
+    </div>
+  </form>
+{% endblock %}

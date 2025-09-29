@@ -1,0 +1,16 @@
+{% extends "crm/base.html" %}
+{% block title %}Новый абонемент{% endblock %}
+{% block content %}
+  <h1>Новый абонемент</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+      {% for error in field.errors %}<div style="color: #dc2626;">{{ error }}</div>{% endfor %}
+    {% endfor %}
+    <p><button class="btn" type="submit">Сохранить</button></p>
+  </form>
+{% endblock %}
