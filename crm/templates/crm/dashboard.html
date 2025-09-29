@@ -1,0 +1,130 @@
+{% extends "crm/base.html" %}
+{% block title %}Главная{% endblock %}
+{% block content %}
+  <h1>Добро пожаловать!</h1>
+  {% if role == "admin" %}
+    <p>Вы вошли как администратор. Управляйте курсами, абонементами и платежами.</p>
+    <p>
+      <a class="btn" href="{% url 'crm:course_create' %}">Создать курс</a>
+      <a class="btn" href="{% url 'crm:student_create' %}">Добавить ученика</a>
+      <a class="btn" href="{% url 'crm:subscription_create' %}">Добавить абонемент</a>
+      <a class="btn" href="{% url 'crm:payment_create' %}">Добавить платёж</a>
+    </p>
+    <h2>Курсы</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Название</th>
+          <th>Преподаватель</th>
+          <th>Расписание</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for course in courses %}
+          <tr>
+            <td><a href="{% url 'crm:course_detail' course.pk %}">{{ course.title }}</a></td>
+            <td>{{ course.teacher|default:"Не назначен" }}</td>
+            <td>{{ course.schedule|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="3">Пока нет курсов</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="display: grid; gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+      <section>
+        <h3>Последние абонементы</h3>
+        <ul>
+          {% for subscription in recent_subscriptions %}
+            <li>
+              {{ subscription.student.full_name }} — {{ subscription.course.title }}
+              ({{ subscription.start_date }} – {{ subscription.end_date|default:"без даты" }})
+            </li>
+          {% empty %}
+            <li>Пока нет абонементов</li>
+          {% endfor %}
+        </ul>
+      </section>
+      <section>
+        <h3>Последние платежи</h3>
+        <ul>
+          {% for payment in recent_payments %}
+            <li>{{ payment.student.full_name }} — {{ payment.amount }} ₽ ({{ payment.paid_at|date:"d.m.Y" }})</li>
+          {% empty %}
+            <li>Пока нет платежей</li>
+          {% endfor %}
+        </ul>
+      </section>
+    </div>
+  {% elif role == "teacher" %}
+    <p>Вы вошли как преподаватель. Создавайте занятия и отмечайте посещаемость.</p>
+    <p><a class="btn" href="{% url 'crm:lesson_create' %}">Создать занятие</a></p>
+    {% for course in courses %}
+      <section>
+        <h2>{{ course.title }}</h2>
+        {% with course.lessons.all|first as latest_lesson %}
+          <p>
+            Последнее занятие:
+            {% if latest_lesson %}
+              {{ latest_lesson.date|date:"d.m.Y" }}
+            {% else %}
+              нет занятий
+            {% endif %}
+          </p>
+        {% endwith %}
+        <p><a class="btn" href="{% url 'crm:course_detail' course.pk %}">Перейти к курсу</a></p>
+        <h3>Недавние занятия</h3>
+        <ul>
+          {% for lesson in course.lessons.all|slice:":5" %}
+            <li>
+              {{ lesson.date|date:"d.m.Y" }} — {{ lesson.topic|default:"Без темы" }}
+              <a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Отметить посещаемость</a>
+            </li>
+          {% empty %}
+            <li>Пока нет занятий</li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% empty %}
+      <p>Вам не назначены курсы.</p>
+    {% endfor %}
+  {% elif role == "parent" %}
+    <p>Вы вошли как родитель. Просматривайте посещаемость и оплаты ваших детей.</p>
+    {% for student in students %}
+      <section>
+        <h2>
+          <a href="{% url 'crm:student_detail' student.pk %}">{{ student.full_name }}</a>
+        </h2>
+        <h3>Последние занятия</h3>
+        <ul>
+          {% for attendance in student.attendances.all|slice:":5" %}
+            <li>
+              {{ attendance.lesson.date|date:"d.m.Y" }} — {{ attendance.lesson.course.title }}:
+              {{ attendance.get_status_display }};
+              задачи: {{ attendance.get_task_status_display }}
+            </li>
+          {% empty %}
+            <li>Данных о посещаемости пока нет</li>
+          {% endfor %}
+        </ul>
+        <h3>Абонементы</h3>
+        <ul>
+          {% for subscription in student.subscriptions.all %}
+            <li>
+              {{ subscription.course.title }} — {{ subscription.lessons_included }} занятий за {{ subscription.price }} ₽
+              ({{ subscription.start_date }} – {{ subscription.end_date|default:"без даты" }})
+            </li>
+          {% empty %}
+            <li>Абонементы ещё не добавлены</li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% empty %}
+      <p>К вашему аккаунту не привязаны ученики. Обратитесь к администратору.</p>
+    {% endfor %}
+  {% else %}
+    <p>У вашего аккаунта пока нет роли. Пожалуйста, обратитесь к администратору.</p>
+  {% endif %}
+{% endblock %}

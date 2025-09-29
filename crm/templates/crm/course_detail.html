@@ -1,0 +1,71 @@
+{% extends "crm/base.html" %}
+{% block title %}Курс {{ course.title }}{% endblock %}
+{% block content %}
+  <h1>{{ course.title }}</h1>
+  <p><strong>Преподаватель:</strong> {{ course.teacher|default:"Не назначен" }}</p>
+  <p><strong>Расписание:</strong> {{ course.schedule|default:"Не указано" }}</p>
+  <p><strong>Описание:</strong> {{ course.description|default:"—" }}</p>
+  {% if can_edit %}
+    <p><a class="btn" href="{% url 'crm:lesson_create' %}?course={{ course.pk }}">Добавить занятие</a></p>
+  {% endif %}
+  {% if can_manage_enrollments %}
+    <p>
+      <a class="btn" href="{% url 'crm:student_create' %}?course={{ course.pk }}">Добавить нового ученика</a>
+      <a class="btn btn-secondary" href="{% url 'crm:enrollment_create' %}?course={{ course.pk }}">Записать существующего ученика</a>
+    </p>
+  {% endif %}
+  <section>
+    <h2>Ученики</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ФИО</th>
+          <th>Дата начала</th>
+          <th>Активна</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for enrollment in enrollments %}
+          <tr>
+            <td>{{ enrollment.student.full_name }}</td>
+            <td>{{ enrollment.start_date|date:"d.m.Y" }}</td>
+            <td>{{ enrollment.is_active|yesno:"Да,Нет" }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="3">Пока нет записанных учеников.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  <section>
+    <h2>Занятия</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Дата</th>
+          <th>Тема</th>
+          {% if can_edit %}
+            <th>Действия</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for lesson in lessons %}
+          <tr>
+            <td>{{ lesson.date|date:"d.m.Y" }}</td>
+            <td>{{ lesson.topic|default:"—" }}</td>
+            {% if can_edit %}
+              <td><a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Отметить посещаемость</a></td>
+            {% endif %}
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="3">Занятия ещё не созданы.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}
