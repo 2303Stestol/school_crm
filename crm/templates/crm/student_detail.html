@@ -1,0 +1,91 @@
+{% extends "crm/base.html" %}
+{% block title %}{{ student.full_name }}{% endblock %}
+{% block content %}
+  <h1>{{ student.full_name }}</h1>
+  <p><strong>Телефон для связи:</strong> {{ student.guardian_phone|default:"—" }}</p>
+  <section>
+    <h2>Посещаемость</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Дата</th>
+          <th>Курс</th>
+          <th>Статус</th>
+          <th>Задачи</th>
+          <th>Комментарий</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for attendance in attendances %}
+          <tr>
+            <td>{{ attendance.lesson.date|date:"d.m.Y" }}</td>
+            <td>{{ attendance.lesson.course.title }}</td>
+            <td>{{ attendance.get_status_display }}</td>
+            <td>{{ attendance.get_task_status_display }}</td>
+            <td>{{ attendance.comment|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="5">Данных о посещаемости пока нет.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  <section>
+    <h2>Абонементы</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Курс</th>
+          <th>Занятий</th>
+          <th>Стоимость</th>
+          <th>Период</th>
+          <th>Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for subscription in subscriptions %}
+          <tr>
+            <td>{{ subscription.course.title }}</td>
+            <td>{{ subscription.lessons_included }}</td>
+            <td>{{ subscription.price }} ₽</td>
+            <td>{{ subscription.start_date }} – {{ subscription.end_date|default:"без даты" }}</td>
+            <td>{{ subscription.is_active|yesno:"Активен,Неактивен" }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="5">Абонементы ещё не оформлены.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  <section>
+    <h2>Платежи</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Дата</th>
+          <th>Сумма</th>
+          <th>Метод</th>
+          <th>Комментарий</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for payment in payments %}
+          <tr>
+            <td>{{ payment.paid_at|date:"d.m.Y H:i" }}</td>
+            <td>{{ payment.amount }} ₽</td>
+            <td>{{ payment.get_method_display }}</td>
+            <td>{{ payment.comment|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="4">Платежей ещё нет.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

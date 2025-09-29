@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}CRM кружка{% endblock %}</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #f3f4f6;
+        color: #111827;
+      }
+      header {
+        background: #1f2937;
+        color: white;
+        padding: 1rem 2rem;
+      }
+      nav a {
+        color: white;
+        margin-right: 1rem;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      main {
+        max-width: 1100px;
+        margin: 2rem auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.5rem;
+      }
+      table thead {
+        background: #e5e7eb;
+      }
+      th,
+      td {
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        text-align: left;
+      }
+      .btn {
+        display: inline-block;
+        padding: 0.5rem 0.9rem;
+        border-radius: 8px;
+        background: #2563eb;
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .btn-secondary {
+        background: #6b7280;
+      }
+      form label {
+        display: block;
+        margin-top: 1rem;
+        font-weight: 600;
+      }
+      form input,
+      form select,
+      form textarea {
+        width: 100%;
+        padding: 0.6rem;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        box-sizing: border-box;
+      }
+      .message {
+        background: #dcfce7;
+        color: #166534;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+      }
+      footer {
+        text-align: center;
+        padding: 2rem;
+        color: #6b7280;
+      }
+    </style>
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body>
+    <header>
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <div>
+          <strong>CRM математического кружка</strong>
+        </div>
+        <nav>
+          <a href="{% url 'crm:dashboard' %}">Главная</a>
+          {% if user.is_authenticated and user.is_staff %}
+            <a href="{% url 'admin:index' %}">Админка</a>
+          {% endif %}
+          {% if user.is_authenticated %}
+            <a href="{% url 'logout' %}">Выйти ({{ user.get_username }})</a>
+          {% else %}
+            <a href="{% url 'login' %}">Войти</a>
+          {% endif %}
+        </nav>
+      </div>
+    </header>
+    <main>
+      {% for message in messages %}
+        <div class="message">{{ message }}</div>
+      {% endfor %}
+      {% block content %}{% endblock %}
+    </main>
+    <footer>© {% now "Y" %} Математический кружок</footer>
+  </body>
+</html>
