@@ -4,7 +4,6 @@ from django.contrib.auth import get_user_model
 from .models import Course, Enrollment, Lesson, Payment, Student, Subscription
 
 
-
 class DateInput(forms.DateInput):
     input_type = "date"
 

@@ -258,7 +258,6 @@ def student_create(request):
         form.fields["courses"].initial = Course.objects.filter(pk=course_id)
     if request.method == "POST" and form.is_valid():
         student = form.save()
-        form.save_m2m()
         courses = form.cleaned_data.get("courses") or []
         for course in courses:
             Enrollment.objects.get_or_create(
