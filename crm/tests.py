@@ -3,10 +3,9 @@ from datetime import date
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase
-from django.utils import timezone
 
 from crm import models
-from crm.forms import EnrollmentForm
+from crm.forms import EnrollmentForm, GuardianLinkForm
 
 
 class ModelTests(TestCase):
@@ -63,25 +62,56 @@ class ModelTests(TestCase):
         self.assertEqual(progress["pending"], 0)
 
 
-    def test_payment_creation(self) -> None:
-        subscription = models.Subscription.objects.create(
+    def test_lessons_balance_counts_debt(self) -> None:
+        models.Subscription.objects.create(
             student=self.student,
             course=self.course,
-            lessons_included=8,
-            price=5000,
+            lessons_included=3,
+            price=4500,
+            purchase_date=date(2024, 1, 1),
         )
-        payment = models.Payment.objects.create(
-            student=self.student,
-            subscription=subscription,
-            amount=2500,
-            paid_at=timezone.now(),
-        )
-        self.assertEqual(payment.subscription, subscription)
-        self.assertEqual(payment.student, self.student)
-        self.assertEqual(str(payment), "2500 ₽ — Иванов Иван Иванович")
+        statuses = [
+            models.AttendanceStatus.PRESENT,
+            models.AttendanceStatus.ABSENT,
+            models.AttendanceStatus.PRESENT,
+            models.AttendanceStatus.ABSENT,
+            models.AttendanceStatus.EXCUSED,
+        ]
+        for index, status in enumerate(statuses, start=1):
+            lesson = models.Lesson.objects.create(
+                course=self.course,
+                date=date(2024, 2, index),
+            )
+            models.Attendance.objects.create(
+                lesson=lesson,
+                student=self.student,
+                status=status,
+            )
+        balance = self.student.lessons_balance()
+        self.assertEqual(balance["purchased"], 3)
+        self.assertEqual(balance["billable"], 4)
+        self.assertEqual(balance["used"], 3)
+        self.assertEqual(balance["remaining"], 0)
+        self.assertEqual(balance["debt"], 1)
 
     def test_student_guardian_link(self) -> None:
         self.assertIn(self.parent_user, self.student.guardians.all())
+
+    def test_guardian_link_form_adds_parent(self) -> None:
+        new_parent = get_user_model().objects.create_user(
+            "another_parent", "another@example.com", "pass1234"
+        )
+        new_parent.groups.add(self.parent_group)
+        form = GuardianLinkForm(
+            data={"student": self.student.pk, "guardian": new_parent.pk},
+            guardian_queryset=get_user_model().objects.filter(pk__in=[self.parent_user.pk, new_parent.pk]),
+        )
+        self.assertTrue(form.is_valid())
+        student, guardian, already_linked = form.save()
+        self.assertFalse(already_linked)
+        self.assertEqual(student, self.student)
+        self.assertEqual(guardian, new_parent)
+        self.assertIn(new_parent, self.student.guardians.all())
 
     def test_student_can_be_enrolled_to_multiple_courses(self) -> None:
         first_enrollment = models.Enrollment.objects.create(

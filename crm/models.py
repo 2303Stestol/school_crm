@@ -41,6 +41,56 @@ class Student(TimestampedModel):
         parts = [self.last_name, self.first_name, self.middle_name]
         return " ".join(part for part in parts if part).strip()
 
+    def billable_attendances(self):
+        return self.attendances.filter(
+            status__in=(AttendanceStatus.PRESENT, AttendanceStatus.ABSENT)
+        )
+
+    def billable_attendance_count(self) -> int:
+        annotated_value = getattr(self, "billable_lessons_annotated", None)
+        if annotated_value is not None:
+            return int(annotated_value)
+        prefetched_attendances = None
+        if hasattr(self, "_prefetched_objects_cache"):
+            prefetched_attendances = self._prefetched_objects_cache.get("attendances")
+        if prefetched_attendances is not None:
+            return sum(
+                1
+                for attendance in prefetched_attendances
+                if attendance.status in (AttendanceStatus.PRESENT, AttendanceStatus.ABSENT)
+            )
+        return self.billable_attendances().count()
+
+    def total_lessons_purchased(self) -> int:
+        annotated_value = getattr(self, "total_lessons_included_annotated", None)
+        if annotated_value is not None:
+            return int(annotated_value)
+        prefetched_subscriptions = None
+        if hasattr(self, "_prefetched_objects_cache"):
+            prefetched_subscriptions = self._prefetched_objects_cache.get("subscriptions")
+        if prefetched_subscriptions is not None:
+            return sum(subscription.lessons_included for subscription in prefetched_subscriptions)
+        aggregate = self.subscriptions.aggregate(total=models.Sum("lessons_included"))
+        return int(aggregate.get("total") or 0)
+
+    def lessons_balance(self) -> dict[str, int]:
+        if hasattr(self, "_lessons_balance_cache"):
+            return self._lessons_balance_cache
+        purchased = self.total_lessons_purchased()
+        billable = self.billable_attendance_count()
+        used = min(billable, purchased)
+        remaining = max(purchased - billable, 0)
+        debt = max(billable - purchased, 0)
+        balance = {
+            "purchased": purchased,
+            "used": used,
+            "remaining": remaining,
+            "debt": debt,
+            "billable": billable,
+        }
+        self._lessons_balance_cache = balance
+        return balance
+
 
 class Course(TimestampedModel):
     title = models.CharField("Название", max_length=255)
@@ -226,52 +276,14 @@ class Subscription(TimestampedModel):
     )
     lessons_included = models.PositiveIntegerField("Количество занятий", default=4)
     price = models.DecimalField("Стоимость", max_digits=9, decimal_places=2)
-    start_date = models.DateField("Дата начала", default=timezone.now)
-    end_date = models.DateField("Дата окончания", blank=True, null=True)
+    purchase_date = models.DateField("Дата покупки", default=timezone.now)
     is_active = models.BooleanField("Активен", default=True)
 
     class Meta:
-        ordering = ("-start_date",)
+        ordering = ("-purchase_date",)
         verbose_name = "Абонемент"
         verbose_name_plural = "Абонементы"
 
     def __str__(self) -> str:
         return f"{self.course.title} для {self.student.full_name}"
-
-
-class PaymentMethod(models.TextChoices):
-    CASH = "cash", "Наличные"
-    CARD = "card", "Карта"
-    TRANSFER = "transfer", "Перевод"
-
-
-class Payment(TimestampedModel):
-    student = models.ForeignKey(
-        Student, related_name="payments", on_delete=models.CASCADE, verbose_name="Ученик"
-    )
-    subscription = models.ForeignKey(
-        Subscription,
-        related_name="payments",
-        on_delete=models.SET_NULL,
-        blank=True,
-        null=True,
-        verbose_name="Абонемент",
-    )
-    amount = models.DecimalField("Сумма", max_digits=9, decimal_places=2)
-    paid_at = models.DateTimeField("Дата оплаты", default=timezone.now)
-    method = models.CharField(
-        "Способ оплаты",
-        max_length=16,
-        choices=PaymentMethod.choices,
-        default=PaymentMethod.CASH,
-    )
-    comment = models.CharField("Комментарий", max_length=255, blank=True)
-
-    class Meta:
-        ordering = ("-paid_at",)
-        verbose_name = "Платёж"
-        verbose_name_plural = "Платежи"
-
-    def __str__(self) -> str:
-        return f"{self.amount} ₽ — {self.student.full_name}"
 
