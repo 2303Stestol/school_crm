@@ -70,6 +70,8 @@ class LiveSearchMixin:
             field = self.fields.get(field_name)
             if field:
                 field.widget.attrs.setdefault("data-live-search", "true")
+                if isinstance(field, forms.ModelChoiceField):
+                    field.empty_label = ""
 
 
 class DateInput(forms.DateInput):
