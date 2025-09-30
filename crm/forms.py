@@ -1,7 +1,10 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.core.exceptions import FieldDoesNotExist
 
 from .models import Course, Enrollment, Exercise, Lesson, Student, Subscription
+
+PARENT_GROUP_NAME = "Родители"
 
 
 def _guardian_label(user) -> str:
@@ -20,6 +23,22 @@ def _guardian_label(user) -> str:
     if email:
         return email
     return f"Пользователь #{user.pk}"
+
+
+def _user_ordering(user_model) -> list[str]:
+    ordering: list[str] = []
+    for field_name in ("last_name", "first_name"):
+        try:
+            user_model._meta.get_field(field_name)
+        except FieldDoesNotExist:
+            continue
+        ordering.append(field_name)
+    username_field = getattr(user_model, "USERNAME_FIELD", "username")
+    if username_field and username_field not in ordering:
+        ordering.append(username_field)
+    if not ordering:
+        ordering.append("pk")
+    return ordering
 
 
 
@@ -169,10 +188,20 @@ class GuardianLinkForm(LiveSearchMixin, forms.Form):
         super().__init__(*args, **kwargs)
         if student_queryset is None:
             student_queryset = Student.objects.order_by("last_name", "first_name")
-        if guardian_queryset is None:
-            guardian_queryset = get_user_model().objects.order_by("username")
+
         self.fields["student"].queryset = student_queryset
+        self.fields["student"].empty_label = None
+
+        user_model = get_user_model()
+        if guardian_queryset is None:
+            guardian_queryset = (
+                user_model.objects.filter(groups__name=PARENT_GROUP_NAME)
+                .order_by(*_user_ordering(user_model))
+                .distinct()
+            )
+
         self.fields["guardian"].queryset = guardian_queryset
+        self.fields["guardian"].empty_label = None
         self.fields["guardian"].label_from_instance = _guardian_label
         self.fields["student"].label_from_instance = lambda student: student.full_name or str(student)
 
