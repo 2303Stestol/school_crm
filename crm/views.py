@@ -1,7 +1,7 @@
 import logging
 
 from django.contrib import messages
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate, get_user_model, login as auth_login
 from django.contrib.auth.models import Group
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Max, Prefetch, Q, Sum
@@ -18,11 +18,13 @@ from .forms import (
     EnrollmentForm,
     GuardianLinkForm,
     LessonForm,
+    PhoneLoginForm,
     ParentRegistrationForm,
     StudentForm,
     SubscriptionForm,
     _user_ordering,
 )
+from .forms import generate_verification_code
 from .models import (
     Attendance,
     AttendanceStatus,
@@ -36,6 +38,8 @@ from .models import (
     Subscription,
 )
 
+from .phone_codes import append_phone_code
+
 
 ADMIN_GROUP = "Администраторы"
 TEACHER_GROUP = "Учителя"
@@ -43,6 +47,65 @@ PARENT_GROUP = "Родители"
 
 
 logger = logging.getLogger(__name__)
+
+
+def phone_login(request):
+    if request.user.is_authenticated:
+        return redirect("crm:dashboard")
+
+    pending_phone = request.session.get("phone_login_phone")
+    stage = "verify" if pending_phone else "request"
+
+    if request.method == "POST":
+        form = PhoneLoginForm(request.POST)
+        if form.is_valid():
+            phone_number = form.cleaned_data["phone_number"]
+            code = (form.cleaned_data.get("code") or "").strip()
+            user = form.get_user()
+            if not code:
+                new_code = generate_verification_code()
+                user.set_password(new_code)
+                user.save(update_fields=["password"])
+                append_phone_code(phone_number, new_code, reason="login")
+                logger.info(
+                    "Отправлен код подтверждения %s для пользователя %s",
+                    new_code,
+                    phone_number,
+                )
+                request.session["phone_login_phone"] = phone_number
+                messages.info(
+                    request,
+                    "Мы отправили новый код подтверждения. Введите его и отправьте форму ещё раз.",
+                )
+                return redirect("login")
+
+            user = authenticate(request, username=phone_number, password=code)
+            if user is None:
+                messages.error(
+                    request,
+                    "Неверный код. Запросите новый код и попробуйте ещё раз.",
+                )
+                request.session["phone_login_phone"] = phone_number
+                stage = "verify"
+            else:
+                auth_login(request, user)
+                request.session.pop("phone_login_phone", None)
+                messages.success(request, "Вы успешно вошли в систему.")
+                return redirect("crm:dashboard")
+        else:
+            stage = "request"
+    else:
+        initial = {"phone_number": pending_phone} if pending_phone else None
+        form = PhoneLoginForm(initial=initial)
+
+    if request.method == "POST" and "form" not in locals():
+        form = PhoneLoginForm(request.POST)
+
+    return render(
+        request,
+        "registration/login.html",
+        {"form": form, "stage": stage},
+    )
 
 
 def is_admin(user) -> bool:
@@ -421,6 +484,7 @@ def parent_register(request):
         user, password = form.save()
         group, _ = Group.objects.get_or_create(name=PARENT_GROUP)
         user.groups.add(group)
+        append_phone_code(user.get_username(), password, reason="registration")
         logger.info(
             "Отправлен код подтверждения %s для пользователя %s",
             password,

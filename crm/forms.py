@@ -17,6 +17,15 @@ def generate_verification_code(length: int = 6) -> str:
     return "".join(random.choice(digits) for _ in range(length))
 
 
+def normalize_phone_number(raw_phone: str) -> str:
+    """Normalize a phone number to +79990000000 format."""
+
+    digits = re.sub(r"\D", "", raw_phone or "")
+    if len(digits) < 10:
+        raise forms.ValidationError("Введите корректный номер телефона.")
+    return f"+{digits}"
+
+
 def _guardian_label(user) -> str:
     """Return a readable label for guardian selections."""
 
@@ -228,11 +237,7 @@ class ParentRegistrationForm(forms.Form):
     phone_number = forms.CharField(label="Номер телефона", max_length=32)
 
     def clean_phone_number(self):
-        raw_phone = self.cleaned_data["phone_number"]
-        digits = re.sub(r"\D", "", raw_phone or "")
-        if len(digits) < 10:
-            raise forms.ValidationError("Введите корректный номер телефона.")
-        normalized = f"+{digits}"
+        normalized = normalize_phone_number(self.cleaned_data["phone_number"])
         user_model = get_user_model()
         username_field = getattr(user_model, "USERNAME_FIELD", "username") or "username"
         if user_model._default_manager.filter(**{username_field: normalized}).exists():
@@ -251,4 +256,39 @@ class ParentRegistrationForm(forms.Form):
         }
         user = user_model.objects.create_user(**create_kwargs)
         return user, password
+
+
+class PhoneLoginForm(forms.Form):
+    phone_number = forms.CharField(label="Номер телефона", max_length=32)
+    code = forms.CharField(
+        label="Код подтверждения",
+        max_length=32,
+        required=False,
+        widget=forms.TextInput(attrs={"autocomplete": "one-time-code"}),
+    )
+
+    error_messages = {
+        "invalid_phone": "Введите корректный номер телефона.",
+        "user_not_found": "Пользователь с таким номером не найден.",
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user_cache = None
+
+    def clean_phone_number(self):
+        try:
+            normalized = normalize_phone_number(self.cleaned_data["phone_number"])
+        except forms.ValidationError as error:
+            raise forms.ValidationError(self.error_messages["invalid_phone"]) from error
+        user_model = get_user_model()
+        username_field = getattr(user_model, "USERNAME_FIELD", "username") or "username"
+        user = user_model._default_manager.filter(**{username_field: normalized}).first()
+        if user is None:
+            raise forms.ValidationError(self.error_messages["user_not_found"])
+        self.user_cache = user
+        return normalized
+
+    def get_user(self):
+        return self.user_cache
 
