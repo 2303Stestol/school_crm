@@ -1,8 +1,10 @@
 from datetime import date
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase
+from django.urls import reverse
 
 from crm import models
 from crm.forms import EnrollmentForm, GuardianLinkForm
@@ -113,7 +115,7 @@ class ModelTests(TestCase):
         self.assertEqual(guardian, new_parent)
         self.assertIn(new_parent, self.student.guardians.all())
 
-    def test_guardian_link_form_defaults_show_parents(self) -> None:
+    def test_guardian_link_form_defaults_include_all_users(self) -> None:
         form = GuardianLinkForm()
         guardian_field = form.fields["guardian"]
         student_field = form.fields["student"]
@@ -121,7 +123,7 @@ class ModelTests(TestCase):
         self.assertIsNone(student_field.empty_label)
         guardians = list(guardian_field.queryset)
         self.assertIn(self.parent_user, guardians)
-        self.assertNotIn(self.teacher_user, guardians)
+        self.assertIn(self.teacher_user, guardians)
 
     def test_student_can_be_enrolled_to_multiple_courses(self) -> None:
         first_enrollment = models.Enrollment.objects.create(
@@ -161,4 +163,41 @@ class ModelTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("__all__", form.errors)
         self.assertIn("у этого ученика уже есть активная запись", form.errors["__all__"][0].lower())
+
+
+class RegistrationTests(TestCase):
+    @patch("crm.forms.generate_verification_code", return_value="654321")
+    def test_parent_registration_creates_user_with_parent_group(self, code_generator) -> None:
+        with self.assertLogs("crm.views", level="INFO") as log_capture:
+            response = self.client.post(
+                reverse("crm:parent_register"),
+                {
+                    "first_name": "Мария",
+                    "last_name": "Иванова",
+                    "phone_number": "+7 (999) 000-00-00",
+                },
+            )
+        self.assertRedirects(response, reverse("login"))
+        user_model = get_user_model()
+        user = user_model.objects.get(username="+79990000000")
+        self.assertTrue(user.check_password("654321"))
+        self.assertEqual(user.first_name, "Мария")
+        self.assertEqual(user.last_name, "Иванова")
+        parent_group = Group.objects.get(name="Родители")
+        self.assertIn(parent_group, user.groups.all())
+        self.assertTrue(any("654321" in message for message in log_capture.output))
+
+    def test_parent_registration_validates_unique_phone(self) -> None:
+        user_model = get_user_model()
+        user_model.objects.create_user(username="+79990000000", password="testpass123")
+        response = self.client.post(
+            reverse("crm:parent_register"),
+            {
+                "first_name": "Мария",
+                "last_name": "Иванова",
+                "phone_number": "+7 (999) 000-00-00",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Пользователь с таким номером уже зарегистрирован.")
 

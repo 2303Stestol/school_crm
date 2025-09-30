@@ -5,6 +5,7 @@ from . import views
 app_name = "crm"
 
 urlpatterns = [
+    path("accounts/register/", views.parent_register, name="parent_register"),
     path("", views.dashboard, name="dashboard"),
     path("courses/create/", views.course_create, name="course_create"),
     path("courses/<int:pk>/", views.course_detail, name="course_detail"),

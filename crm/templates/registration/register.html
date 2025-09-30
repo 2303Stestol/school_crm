@@ -1,0 +1,21 @@
+{% extends "crm/base.html" %}
+{% block title %}Регистрация{% endblock %}
+{% block content %}
+  <h1>Регистрация родителя</h1>
+  <p>Укажите номер телефона и данные родителя. На указанный номер будет отправлен код для входа в систему.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <label for="id_first_name">Имя</label>
+    {{ form.first_name }}
+    {% for error in form.first_name.errors %}<div style="color: #dc2626;">{{ error }}</div>{% endfor %}
+    <label for="id_last_name">Фамилия</label>
+    {{ form.last_name }}
+    {% for error in form.last_name.errors %}<div style="color: #dc2626;">{{ error }}</div>{% endfor %}
+    <label for="id_phone_number">Номер телефона</label>
+    {{ form.phone_number }}
+    {% for error in form.phone_number.errors %}<div style="color: #dc2626;">{{ error }}</div>{% endfor %}
+    <p><button class="btn" type="submit">Зарегистрироваться</button></p>
+  </form>
+  <p>Уже есть аккаунт? <a href="{% url 'login' %}">Войдите</a>.</p>
+{% endblock %}
