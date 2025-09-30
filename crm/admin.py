@@ -56,14 +56,7 @@ class ExerciseResultAdmin(admin.ModelAdmin):
 
 @admin.register(models.Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
-    list_display = ("student", "course", "lessons_included", "price", "is_active")
-    list_filter = ("course", "is_active")
+    list_display = ("student", "course", "lessons_included", "price", "purchase_date", "is_active")
+    list_filter = ("course", "is_active", "purchase_date")
     search_fields = ("student__last_name", "course__title")
-
-
-@admin.register(models.Payment)
-class PaymentAdmin(admin.ModelAdmin):
-    list_display = ("student", "amount", "method", "paid_at")
-    list_filter = ("method", "paid_at")
-    search_fields = ("student__last_name", "student__first_name")
 

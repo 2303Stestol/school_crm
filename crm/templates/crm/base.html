@@ -127,6 +127,15 @@
       .btn-secondary {
         background: #5f6368;
       }
+      .btn-back {
+        background: #fff;
+        color: var(--sheet-highlight);
+        border: 1px solid var(--sheet-border);
+      }
+      .btn-back:hover {
+        background: #e8f0fe;
+        box-shadow: none;
+      }
       form label {
         display: block;
         margin-top: 1.25rem;
@@ -201,6 +210,30 @@
         font-size: 0.85rem;
 
       }
+      .page-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        margin-bottom: 1.5rem;
+      }
+      .select-search {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .select-search__input {
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        border: 1px solid var(--sheet-border);
+        font-size: 0.9rem;
+      }
+      .select-search__input:focus {
+        outline: none;
+        border-color: var(--sheet-highlight);
+        box-shadow: 0 0 0 3px rgba(11, 87, 208, 0.2);
+      }
     </style>
     {% block extra_head %}{% endblock %}
   </head>
@@ -227,11 +260,67 @@
       </div>
     </header>
     <main>
+      <div class="page-toolbar">
+        <button type="button" class="btn btn-secondary btn-back" data-action="back" data-default-url="{% url 'crm:dashboard' %}">← Назад</button>
+        {% block page_toolbar %}{% endblock %}
+      </div>
       {% for message in messages %}
         <div class="message">{{ message }}</div>
       {% endfor %}
       {% block content %}{% endblock %}
     </main>
     <footer>© {% now "Y" %} Математический кружок</footer>
+    <script>
+      (function () {
+        document.querySelectorAll('[data-action="back"]').forEach(function (button) {
+          button.addEventListener('click', function (event) {
+            event.preventDefault();
+            if (document.referrer && document.referrer !== window.location.href) {
+              window.history.back();
+            } else {
+              const fallback = button.getAttribute('data-default-url');
+              if (fallback) {
+                window.location.href = fallback;
+              }
+            }
+          });
+        });
+        document.querySelectorAll('select[data-live-search="true"]').forEach(function (select) {
+          if (select.dataset.enhanced === '1') {
+            return;
+          }
+          select.dataset.enhanced = '1';
+          const container = document.createElement('div');
+          container.className = 'select-search';
+          const input = document.createElement('input');
+          input.type = 'search';
+          input.className = 'select-search__input';
+          input.placeholder = 'Поиск…';
+          const parent = select.parentNode;
+          parent.insertBefore(container, select);
+          container.appendChild(input);
+          container.appendChild(select);
+          const options = Array.from(select.options);
+          const update = function () {
+            const term = input.value.trim().toLowerCase();
+            options.forEach(function (option) {
+              if (!term) {
+                option.hidden = false;
+                return;
+              }
+              if (option.selected) {
+                option.hidden = false;
+                return;
+              }
+              option.hidden = !option.text.toLowerCase().includes(term);
+            });
+          };
+          input.addEventListener('input', update);
+          if (!select.multiple && select.selectedIndex >= 0) {
+            input.value = select.options[select.selectedIndex].text;
+          }
+        });
+      })();
+    </script>
   </body>
 </html>

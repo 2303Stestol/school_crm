@@ -1,7 +1,8 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db.models import Max, Prefetch, Q
+from django.db.models import Count, Max, Prefetch, Q, Sum
+from django.db.models.functions import Coalesce
 from django.db import transaction
 
 from django.http import HttpResponseForbidden
@@ -12,8 +13,8 @@ from .forms import (
     CourseForm,
     ExerciseForm,
     EnrollmentForm,
+    GuardianLinkForm,
     LessonForm,
-    PaymentForm,
     StudentForm,
     SubscriptionForm,
 )
@@ -26,7 +27,6 @@ from .models import (
     ExerciseResult,
     ExerciseStatus,
     Lesson,
-    Payment,
     Student,
     Subscription,
 )
@@ -58,13 +58,31 @@ def dashboard(request):
     user = request.user
     context: dict[str, object]
     if is_admin(user):
+        students = list(
+            Student.objects.prefetch_related(
+                "guardians",
+                Prefetch(
+                    "subscriptions",
+                    queryset=Subscription.objects.select_related("course").order_by("-purchase_date"),
+                ),
+                Prefetch(
+                    "attendances",
+                    queryset=Attendance.objects.only("id", "status", "student_id").order_by("-lesson__date"),
+                ),
+            ).order_by("last_name", "first_name")
+        )
+        students_with_debt: list[dict[str, object]] = []
+        for student in students:
+            balance = student.lessons_balance()
+            if balance["debt"]:
+                students_with_debt.append({"student": student, "balance": balance})
         context = {
             "role": "admin",
             "courses": Course.objects.select_related("teacher").order_by("title"),
-            "students": Student.objects.prefetch_related("guardians").order_by("last_name"),
-            "recent_payments": Payment.objects.select_related("student").order_by("-paid_at")[:5],
+            "students": students,
+            "students_with_debt": students_with_debt,
             "recent_subscriptions": Subscription.objects.select_related("student", "course")
-            .order_by("-start_date")[:5],
+            .order_by("-purchase_date")[:5],
         }
     elif is_teacher(user):
         context = {
@@ -90,7 +108,7 @@ def dashboard(request):
                 ),
                 Prefetch(
                     "subscriptions",
-                    queryset=Subscription.objects.select_related("course").order_by("-start_date"),
+                    queryset=Subscription.objects.select_related("course").order_by("-purchase_date"),
                 ),
             ).order_by("last_name")
         )
@@ -284,9 +302,8 @@ def student_detail(request, pk: int):
             ),
             Prefetch(
                 "subscriptions",
-                queryset=Subscription.objects.select_related("course").order_by("-start_date"),
+                queryset=Subscription.objects.select_related("course").order_by("-purchase_date"),
             ),
-            Prefetch("payments", queryset=Payment.objects.order_by("-paid_at")),
         ),
         pk=pk,
     )
@@ -307,7 +324,8 @@ def student_detail(request, pk: int):
             "student": student,
             "attendances": student.attendances.all(),
             "subscriptions": student.subscriptions.all(),
-            "payments": student.payments.all(),
+            "balance": student.lessons_balance(),
+            "can_manage_guardians": is_admin(user),
         },
     )
 
@@ -350,6 +368,45 @@ def student_create(request):
 
 
 @login_required
+def student_guardian_link(request):
+    if not is_admin(request.user):
+        return _forbidden()
+    guardian_queryset = get_user_model().objects.filter(groups__name=PARENT_GROUP).order_by(
+        "username"
+    )
+    form = GuardianLinkForm(request.POST or None, guardian_queryset=guardian_queryset)
+    if request.method != "POST":
+        student_id = request.GET.get("student")
+        guardian_id = request.GET.get("guardian")
+        if student_id:
+            form.fields["student"].initial = student_id
+        if guardian_id:
+            form.fields["guardian"].initial = guardian_id
+    if request.method == "POST" and form.is_valid():
+        student, guardian, already_linked = form.save()
+        if already_linked:
+            messages.info(
+                request,
+                f"Родитель {guardian.get_username()} уже привязан к ученику {student.full_name}.",
+            )
+        else:
+            messages.success(
+                request,
+                f"Родитель {guardian.get_username()} привязан к ученику {student.full_name}.",
+            )
+        redirect_to = request.POST.get("next") or request.GET.get("next")
+        if redirect_to:
+            return redirect(redirect_to)
+        return redirect("crm:student_detail", pk=student.pk)
+    next_url = request.GET.get("next") or request.POST.get("next") or ""
+    return render(
+        request,
+        "crm/student_guardian_link.html",
+        {"form": form, "next": next_url},
+    )
+
+
+@login_required
 def enrollment_create(request):
     if not is_admin(request.user):
         return _forbidden()
@@ -378,17 +435,3 @@ def subscription_create(request):
         messages.success(request, "Абонемент сохранён")
         return redirect("crm:student_detail", pk=subscription.student_id)
     return render(request, "crm/subscription_form.html", {"form": form})
-
-
-@login_required
-def payment_create(request):
-    if not is_admin(request.user):
-        return _forbidden()
-    form = PaymentForm(request.POST or None)
-    if request.method != "POST":
-        form.initial.setdefault("paid_at", timezone.now().strftime("%Y-%m-%dT%H:%M"))
-    if request.method == "POST" and form.is_valid():
-        payment = form.save()
-        messages.success(request, "Платёж сохранён")
-        return redirect("crm:student_detail", pk=payment.student_id)
-    return render(request, "crm/payment_form.html", {"form": form})

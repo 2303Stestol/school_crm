@@ -1,28 +1,45 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from .models import Course, Enrollment, Exercise, Lesson, Payment, Student, Subscription
+from .models import Course, Enrollment, Exercise, Lesson, Student, Subscription
 
+
+
+class LiveSearchMixin:
+    live_search_fields: tuple[str, ...] = ()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name in self.live_search_fields:
+            field = self.fields.get(field_name)
+            if field:
+                field.widget.attrs.setdefault("data-live-search", "true")
 
 
 class DateInput(forms.DateInput):
     input_type = "date"
 
 
-class LessonForm(forms.ModelForm):
+class LessonForm(LiveSearchMixin, forms.ModelForm):
+    live_search_fields = ("course",)
+
     class Meta:
         model = Lesson
         fields = ["course", "date", "topic"]
         widgets = {"date": DateInput()}
 
 
-class CourseForm(forms.ModelForm):
+class CourseForm(LiveSearchMixin, forms.ModelForm):
+    live_search_fields = ("teacher",)
+
     class Meta:
         model = Course
         fields = ["title", "description", "schedule", "capacity", "teacher"]
 
 
-class StudentForm(forms.ModelForm):
+class StudentForm(LiveSearchMixin, forms.ModelForm):
+    live_search_fields = ("guardians",)
+
     courses = forms.ModelMultipleChoiceField(
         queryset=Course.objects.none(),
         required=False,
@@ -52,9 +69,12 @@ class StudentForm(forms.ModelForm):
         self.fields["guardians"].queryset = get_user_model().objects.order_by("username")
         self.fields["guardians"].required = False
         self.fields["courses"].queryset = Course.objects.order_by("title")
+        self.fields["courses"].widget.attrs.setdefault("data-live-search", "true")
 
 
-class EnrollmentForm(forms.ModelForm):
+class EnrollmentForm(LiveSearchMixin, forms.ModelForm):
+    live_search_fields = ("student", "course")
+
     class Meta:
         model = Enrollment
         fields = ["student", "course", "start_date", "end_date", "is_active"]
@@ -85,7 +105,9 @@ class EnrollmentForm(forms.ModelForm):
         return cleaned_data
 
 
-class SubscriptionForm(forms.ModelForm):
+class SubscriptionForm(LiveSearchMixin, forms.ModelForm):
+    live_search_fields = ("student", "course")
+
     class Meta:
         model = Subscription
         fields = [
@@ -93,22 +115,10 @@ class SubscriptionForm(forms.ModelForm):
             "course",
             "lessons_included",
             "price",
-            "start_date",
-            "end_date",
+            "purchase_date",
             "is_active",
         ]
-        widgets = {"start_date": DateInput(), "end_date": DateInput()}
-
-
-class PaymentForm(forms.ModelForm):
-    paid_at = forms.DateTimeField(
-        widget=forms.DateTimeInput(attrs={"type": "datetime-local"}),
-        input_formats=["%Y-%m-%dT%H:%M"],
-    )
-
-    class Meta:
-        model = Payment
-        fields = ["student", "subscription", "amount", "paid_at", "method", "comment"]
+        widgets = {"purchase_date": DateInput()}
 
 
 class ExerciseForm(forms.ModelForm):
@@ -118,4 +128,31 @@ class ExerciseForm(forms.ModelForm):
         widgets = {
             "description": forms.Textarea(attrs={"rows": 2}),
         }
+
+
+class GuardianLinkForm(LiveSearchMixin, forms.Form):
+    live_search_fields = ("student", "guardian")
+
+    student = forms.ModelChoiceField(
+        queryset=Student.objects.none(), label="Ученик"
+    )
+    guardian = forms.ModelChoiceField(
+        queryset=get_user_model().objects.none(), label="Родитель"
+    )
+
+    def __init__(self, *args, **kwargs):
+        guardian_queryset = kwargs.pop("guardian_queryset", None)
+        super().__init__(*args, **kwargs)
+        self.fields["student"].queryset = Student.objects.order_by("last_name", "first_name")
+        if guardian_queryset is None:
+            guardian_queryset = get_user_model().objects.order_by("username")
+        self.fields["guardian"].queryset = guardian_queryset
+
+    def save(self):
+        student: Student = self.cleaned_data["student"]
+        guardian = self.cleaned_data["guardian"]
+        already_linked = student.guardians.filter(pk=guardian.pk).exists()
+        if not already_linked:
+            student.guardians.add(guardian)
+        return student, guardian, already_linked
 

@@ -3,12 +3,12 @@
 {% block content %}
   <h1>Добро пожаловать!</h1>
   {% if role == "admin" %}
-    <p>Вы вошли как администратор. Управляйте курсами, абонементами и платежами.</p>
+    <p>Вы вошли как администратор. Управляйте курсами, абонементами и связями родителей.</p>
     <p>
       <a class="btn" href="{% url 'crm:course_create' %}">Создать курс</a>
       <a class="btn" href="{% url 'crm:student_create' %}">Добавить ученика</a>
       <a class="btn" href="{% url 'crm:subscription_create' %}">Добавить абонемент</a>
-      <a class="btn" href="{% url 'crm:payment_create' %}">Добавить платёж</a>
+      <a class="btn" href="{% url 'crm:student_guardian_link' %}">Привязать родителя</a>
     </p>
     <h2>Курсы</h2>
     <table class="sheet-table">
@@ -34,6 +34,45 @@
         {% endfor %}
       </tbody>
     </table>
+    <h2>Ученики</h2>
+    <table class="sheet-table">
+      <thead>
+        <tr>
+          <th>Ученик</th>
+          <th>Родители</th>
+          <th>Куплено занятий</th>
+          <th>Использовано</th>
+          <th>Остаток</th>
+          <th>Долг</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for student in students %}
+          {% with balance=student.lessons_balance %}
+            <tr>
+              <td><a href="{% url 'crm:student_detail' student.pk %}">{{ student.full_name }}</a></td>
+              <td>
+                {% if student.guardians.all %}
+                  {% for guardian in student.guardians.all %}
+                    {{ guardian.get_username }}{% if not forloop.last %}, {% endif %}
+                  {% endfor %}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>{{ balance.purchased }}</td>
+              <td>{{ balance.used }}</td>
+              <td>{{ balance.remaining }}</td>
+              <td>{% if balance.debt %}<strong>{{ balance.debt }}</strong>{% else %}0{% endif %}</td>
+            </tr>
+          {% endwith %}
+        {% empty %}
+          <tr>
+            <td colspan="6">Ученики ещё не добавлены.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
     <div style="display: grid; gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
       <section class="sheet-card">
         <h3>Последние абонементы</h3>
@@ -41,9 +80,7 @@
           {% for subscription in recent_subscriptions %}
             <li style="margin-bottom: 0.6rem;">
               <strong>{{ subscription.student.full_name }}</strong><br />
-              {{ subscription.course.title }} — c {{ subscription.start_date|date:"d.m.Y" }}
-              {% if subscription.end_date %} по {{ subscription.end_date|date:"d.m.Y" }}{% endif %}
-
+              {{ subscription.course.title }} — куплен {{ subscription.purchase_date|date:"d.m.Y" }}
             </li>
           {% empty %}
             <li>Пока нет абонементов</li>
@@ -51,16 +88,15 @@
         </ul>
       </section>
       <section class="sheet-card">
-        <h3>Последние платежи</h3>
+        <h3>Ученики с долгами</h3>
         <ul style="margin: 0; padding-left: 1.2rem; color: #3c4043;">
-          {% for payment in recent_payments %}
+          {% for item in students_with_debt %}
             <li style="margin-bottom: 0.6rem;">
-              <strong>{{ payment.student.full_name }}</strong><br />
-              {{ payment.amount }} ₽ — {{ payment.paid_at|date:"d.m.Y" }} ({{ payment.get_method_display }})
+              <strong>{{ item.student.full_name }}</strong><br />
+              Долг: {{ item.balance.debt }} занятий
             </li>
-
           {% empty %}
-            <li>Пока нет платежей</li>
+            <li>Нет задолженностей по занятиям</li>
           {% endfor %}
         </ul>
       </section>
@@ -99,12 +135,22 @@
       <p>Вам не назначены курсы.</p>
     {% endfor %}
   {% elif role == "parent" %}
-    <p>Вы вошли как родитель. Просматривайте посещаемость и оплаты ваших детей.</p>
+    <p>Вы вошли как родитель. Просматривайте посещаемость и абонементы ваших детей.</p>
     {% for student in students %}
       <section>
         <h2>
           <a href="{% url 'crm:student_detail' student.pk %}">{{ student.full_name }}</a>
         </h2>
+        {% with balance=student.lessons_balance %}
+          <p>
+            Куплено занятий: {{ balance.purchased }}, использовано: {{ balance.used }}, остаток: {{ balance.remaining }},
+            {% if balance.debt %}
+              <strong>долг: {{ balance.debt }}</strong>
+            {% else %}
+              долг: 0
+            {% endif %}
+          </p>
+        {% endwith %}
         <h3>Последние занятия</h3>
         <ul style="margin: 0; padding-left: 1.2rem; color: #3c4043;">
           {% for attendance in student.attendances.all|slice:":5" %}
@@ -131,7 +177,7 @@
           {% for subscription in student.subscriptions.all %}
             <li>
               {{ subscription.course.title }} — {{ subscription.lessons_included }} занятий за {{ subscription.price }} ₽
-              ({{ subscription.start_date }} – {{ subscription.end_date|default:"без даты" }})
+              (дата покупки: {{ subscription.purchase_date|date:"d.m.Y" }})
             </li>
           {% empty %}
             <li>Абонементы ещё не добавлены</li>
