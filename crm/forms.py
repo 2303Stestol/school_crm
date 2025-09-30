@@ -188,6 +188,7 @@ class GuardianLinkForm(LiveSearchMixin, forms.Form):
         super().__init__(*args, **kwargs)
         if student_queryset is None:
             student_queryset = Student.objects.order_by("last_name", "first_name")
+
         self.fields["student"].queryset = student_queryset
         self.fields["student"].empty_label = None
 
@@ -198,6 +199,7 @@ class GuardianLinkForm(LiveSearchMixin, forms.Form):
                 .order_by(*_user_ordering(user_model))
                 .distinct()
             )
+
         self.fields["guardian"].queryset = guardian_queryset
         self.fields["guardian"].empty_label = None
         self.fields["guardian"].label_from_instance = _guardian_label
