@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Курс — CRM</title>
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <h1>Курс «Frontend Basics»</h1>
+    <p class="subtitle">Подробная информация о курсе, учениках и занятиях</p>
+  </header>
+
+  <main class="course-layout">
+    <section class="course-panels">
+      <article class="panel">
+        <h2>Ученики</h2>
+        <ul class="plain-list">
+          <li>Анна Смирнова</li>
+          <li>Иван Петров</li>
+          <li>Мария Кузнецова</li>
+          <li>Павел Исаев</li>
+          <li>Ксения Лебедева</li>
+        </ul>
+      </article>
+
+      <article class="panel" data-lessons-panel="recent">
+        <div class="panel-header">
+          <h2>Последние занятия</h2>
+        </div>
+        <ul class="plain-list" data-lessons-list>
+          <li>
+            <span>
+              <strong>19 сентября</strong> — Работа с формами
+            </span>
+            <button type="button" class="ghost-button" data-remove-lesson>Удалить</button>
+          </li>
+          <li>
+            <span>
+              <strong>12 сентября</strong> — Основы CSS
+            </span>
+            <button type="button" class="ghost-button" data-remove-lesson>Удалить</button>
+          </li>
+          <li>
+            <span>
+              <strong>5 сентября</strong> — Введение в HTML
+            </span>
+            <button type="button" class="ghost-button" data-remove-lesson>Удалить</button>
+          </li>
+        </ul>
+      </article>
+
+      <article class="panel" data-lessons-panel="upcoming">
+        <div class="panel-header">
+          <h2>Ближайшие занятия</h2>
+        </div>
+        <ul class="plain-list" data-lessons-list>
+          <li>
+            <span>
+              <strong>26 сентября</strong> — Flexbox и Grid
+            </span>
+            <button type="button" class="ghost-button" data-remove-lesson>Удалить</button>
+          </li>
+          <li>
+            <span>
+              <strong>3 октября</strong> — Работа с API
+            </span>
+            <button type="button" class="ghost-button" data-remove-lesson>Удалить</button>
+          </li>
+          <li>
+            <span>
+              <strong>10 октября</strong> — Финальный проект
+            </span>
+            <button type="button" class="ghost-button" data-remove-lesson>Удалить</button>
+          </li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="panel panel--full-width">
+      <div class="panel-header">
+        <h2>Все занятия курса</h2>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Тема</th>
+              <th>Статус</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>5 сентября</td>
+              <td>Введение в HTML</td>
+              <td>Завершено</td>
+            </tr>
+            <tr>
+              <td>12 сентября</td>
+              <td>Основы CSS</td>
+              <td>Завершено</td>
+            </tr>
+            <tr>
+              <td>19 сентября</td>
+              <td>Работа с формами</td>
+              <td>Завершено</td>
+            </tr>
+            <tr>
+              <td>26 сентября</td>
+              <td>Flexbox и Grid</td>
+              <td>Запланировано</td>
+            </tr>
+            <tr>
+              <td>3 октября</td>
+              <td>Работа с API</td>
+              <td>Запланировано</td>
+            </tr>
+            <tr>
+              <td>10 октября</td>
+              <td>Финальный проект</td>
+              <td>Запланировано</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="../assets/js/course.js"></script>
+</body>
+</html>
