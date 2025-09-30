@@ -159,14 +159,22 @@ class GuardianLinkForm(LiveSearchMixin, forms.Form):
         queryset=get_user_model().objects.none(), label="Родитель"
     )
 
-    def __init__(self, *args, **kwargs):
-        guardian_queryset = kwargs.pop("guardian_queryset", None)
+    def __init__(
+        self,
+        *args,
+        student_queryset=None,
+        guardian_queryset=None,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
-        self.fields["student"].queryset = Student.objects.order_by("last_name", "first_name")
+        if student_queryset is None:
+            student_queryset = Student.objects.order_by("last_name", "first_name")
         if guardian_queryset is None:
             guardian_queryset = get_user_model().objects.order_by("username")
+        self.fields["student"].queryset = student_queryset
         self.fields["guardian"].queryset = guardian_queryset
         self.fields["guardian"].label_from_instance = _guardian_label
+        self.fields["student"].label_from_instance = lambda student: student.full_name or str(student)
 
     def save(self):
         student: Student = self.cleaned_data["student"]
