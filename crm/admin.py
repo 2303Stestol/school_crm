@@ -13,7 +13,7 @@ class StudentAdmin(admin.ModelAdmin):
 
 @admin.register(models.Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ("title", "teacher", "schedule", "capacity")
+    list_display = ("title", "teacher", "schedule", "start_date", "end_date")
     search_fields = ("title", "teacher__username", "teacher__first_name", "teacher__last_name")
     list_filter = ("teacher", "created_at")
 

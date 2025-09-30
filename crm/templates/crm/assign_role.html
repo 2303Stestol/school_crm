@@ -1,0 +1,23 @@
+{% extends "crm/base.html" %}
+{% block title %}Назначение роли{% endblock %}
+{% block content %}
+  <h1>Назначение роли</h1>
+  <form method="post" class="form-card">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <label for="{{ form.user.id_for_label }}">{{ form.user.label }}</label>
+    {{ form.user }}
+    {% if form.user.errors %}
+      {% for error in form.user.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+    {% endif %}
+    <fieldset class="radio-group">
+      <legend>{{ form.role.label }}</legend>
+      {{ form.role }}
+      {% if form.role.help_text %}<p class="help-text">{{ form.role.help_text }}</p>{% endif %}
+      {% if form.role.errors %}
+        {% for error in form.role.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+      {% endif %}
+    </fieldset>
+    <p><button class="btn" type="submit">Сохранить</button></p>
+  </form>
+{% endblock %}

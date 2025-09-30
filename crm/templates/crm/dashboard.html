@@ -9,9 +9,14 @@
       <a class="btn" href="{% url 'crm:student_create' %}">Добавить ученика</a>
       <a class="btn" href="{% url 'crm:subscription_create' %}">Добавить абонемент</a>
       <a class="btn" href="{% url 'crm:student_guardian_link' %}">Привязать родителя</a>
+      <a class="btn" href="{% url 'crm:assign_role' %}">Назначить роль</a>
     </p>
     <h2>Курсы</h2>
-    <table class="sheet-table">
+    <div class="table-filter">
+      <label for="courses-search">Поиск курса</label>
+      <input id="courses-search" type="search" placeholder="Введите название" data-filter-target="#courses-table" />
+    </div>
+    <table class="sheet-table" id="courses-table">
 
       <thead>
         <tr>
@@ -22,7 +27,7 @@
       </thead>
       <tbody>
         {% for course in courses %}
-          <tr>
+          <tr data-filter-value="{{ course.title }}">
             <td><a href="{% url 'crm:course_detail' course.pk %}">{{ course.title }}</a></td>
             <td>{{ course.teacher|default:"Не назначен" }}</td>
             <td>{{ course.schedule|default:"—" }}</td>
@@ -35,11 +40,21 @@
       </tbody>
     </table>
     <h2>Ученики</h2>
-    <table class="sheet-table">
+    <div class="table-filter">
+      <label for="students-search">Фильтр по ученикам</label>
+      <input
+        id="students-search"
+        type="search"
+        placeholder="Имя ученика, родителя или преподавателя"
+        data-filter-target="#students-table"
+      />
+    </div>
+    <table class="sheet-table" id="students-table">
       <thead>
         <tr>
           <th>Ученик</th>
           <th>Родители</th>
+          <th>Преподаватели</th>
           <th>Куплено занятий</th>
           <th>Использовано</th>
           <th>Остаток</th>
@@ -49,17 +64,12 @@
       <tbody>
         {% for student in students %}
           {% with balance=student.lessons_balance %}
-            <tr>
+            <tr
+              data-filter-value="{{ student.full_name }} {{ student.guardian_display }} {{ student.teacher_display }}"
+            >
               <td><a href="{% url 'crm:student_detail' student.pk %}">{{ student.full_name }}</a></td>
-              <td>
-                {% if student.guardians.all %}
-                  {% for guardian in student.guardians.all %}
-                    {{ guardian.get_username }}{% if not forloop.last %}, {% endif %}
-                  {% endfor %}
-                {% else %}
-                  —
-                {% endif %}
-              </td>
+              <td>{{ student.guardian_display }}</td>
+              <td>{{ student.teacher_display }}</td>
               <td>{{ balance.purchased }}</td>
               <td>{{ balance.used }}</td>
               <td>{{ balance.remaining }}</td>

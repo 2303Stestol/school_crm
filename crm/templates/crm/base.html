@@ -157,12 +157,243 @@
         font-size: 0.95rem;
         transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
       }
+      form input[type="checkbox"],
+      form input[type="radio"] {
+        width: auto;
+        padding: 0.3rem;
+        border-radius: 4px;
+        margin-right: 0.4rem;
+      }
       form input:focus,
       form select:focus,
       form textarea:focus {
         outline: none;
         border-color: var(--sheet-highlight);
         box-shadow: 0 0 0 3px rgba(11, 87, 208, 0.2);
+      }
+      .form-card {
+        background: #fff;
+        border: 1px solid var(--sheet-border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 10px 28px rgba(60, 64, 67, 0.16);
+      }
+      .form-grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+      .form-column {
+        display: flex;
+        flex-direction: column;
+      }
+      .form-error {
+        color: #d93025;
+        margin-top: 0.35rem;
+        font-size: 0.85rem;
+      }
+      .help-text {
+        margin: 0.35rem 0 0;
+        font-size: 0.85rem;
+        color: #5f6368;
+      }
+      fieldset.weekday-group {
+        margin-top: 1.25rem;
+        border: 1px solid var(--sheet-border);
+        border-radius: 10px;
+        padding: 1rem 1.25rem 1.1rem;
+      }
+      fieldset.weekday-group legend {
+        font-weight: 600;
+        padding: 0 0.4rem;
+      }
+      fieldset.weekday-group ul {
+        list-style: none;
+        padding: 0;
+        margin: 0.5rem 0 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.5rem 1rem;
+      }
+      fieldset.weekday-group li {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-weight: 500;
+      }
+      fieldset.weekday-group input[type="checkbox"] {
+        margin: 0;
+        width: auto;
+        transform: scale(1.05);
+      }
+      .radio-group {
+        margin-top: 1.5rem;
+        border: 1px solid var(--sheet-border);
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+      }
+      .radio-group legend {
+        font-weight: 600;
+        padding: 0 0.4rem;
+      }
+      .radio-group ul {
+        list-style: none;
+        padding: 0;
+        margin: 0.75rem 0 0;
+        display: grid;
+        gap: 0.5rem;
+      }
+      .radio-group li {
+        display: flex;
+        align-items: center;
+      }
+      .table-filter,
+      .lesson-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 1.25rem;
+        align-items: flex-end;
+        margin: 0.75rem 0 1rem;
+      }
+      .table-filter label,
+      .lesson-filters label {
+        margin: 0 0 0.35rem;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #5f6368;
+      }
+      .table-filter input,
+      .lesson-filters input {
+        margin-top: 0;
+      }
+      .lesson-filters .date-range {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      .lesson-summary-grid {
+        display: grid;
+        gap: 1.25rem;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        margin-bottom: 1.5rem;
+      }
+      .lesson-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      .lesson-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.75rem;
+      }
+      .lesson-list li {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        background: #f8fbff;
+        border: 1px solid var(--sheet-border);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+      }
+      .lesson-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .lesson-table-section {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      .combo-field {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+      .combo-field__tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+      .combo-field__tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        background: #e8f0fe;
+        color: #1a73e8;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+      .combo-field__tag-remove {
+        border: none;
+        background: none;
+        color: inherit;
+        font-size: 0.85rem;
+        cursor: pointer;
+        line-height: 1;
+      }
+      .combo-field__input {
+        cursor: text;
+      }
+      .combo-field__dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid var(--sheet-border);
+        border-radius: 10px;
+        box-shadow: 0 12px 28px rgba(60, 64, 67, 0.18);
+        margin-top: 0.4rem;
+        max-height: 260px;
+        overflow-y: auto;
+        display: none;
+        z-index: 40;
+      }
+      .combo-field--open .combo-field__dropdown {
+        display: block;
+      }
+      .combo-field__list {
+        list-style: none;
+        margin: 0;
+        padding: 0.35rem 0;
+      }
+      .combo-field__item {
+        margin: 0;
+        padding: 0;
+      }
+      .combo-field__option {
+        width: 100%;
+        text-align: left;
+        padding: 0.5rem 1rem;
+        border: none;
+        background: none;
+        font: inherit;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+      }
+      .combo-field__option:hover,
+      .combo-field__option:focus {
+        background: #e8f0fe;
+        outline: none;
+      }
+      .combo-field__option--selected {
+        background: #e6f4ea;
+        color: #0b8043;
+      }
+      .combo-field__option--disabled {
+        color: #9aa0a6;
+        cursor: not-allowed;
       }
       .message {
         background: #e6f4ea;
@@ -334,6 +565,9 @@
         .course-detail__intro {
           gap: 1.25rem;
         }
+        .lesson-summary-grid {
+          grid-template-columns: 1fr;
+        }
       }
       @media (max-width: 640px) {
         body {
@@ -427,40 +661,292 @@
             }
           });
         });
-        document.querySelectorAll('select[data-live-search="true"]').forEach(function (select) {
+
+        const combos = [];
+        const closeAllCombos = function (exceptCombo) {
+          combos.forEach(function (combo) {
+            if (combo !== exceptCombo) {
+              combo.close();
+            }
+          });
+        };
+
+        function createCombo(select) {
           if (select.dataset.enhanced === '1') {
-            return;
+            return null;
           }
           select.dataset.enhanced = '1';
-          const container = document.createElement('div');
-          container.className = 'select-search';
+          const isMultiple = select.multiple;
+          const wrapper = document.createElement('div');
+          wrapper.className = 'combo-field';
+          const parent = select.parentNode;
+          parent.insertBefore(wrapper, select);
+          let tagContainer = null;
+          if (isMultiple) {
+            tagContainer = document.createElement('div');
+            tagContainer.className = 'combo-field__tags';
+            wrapper.appendChild(tagContainer);
+          }
           const input = document.createElement('input');
           input.type = 'search';
-          input.className = 'select-search__input';
-          input.placeholder = 'Поиск…';
-          const parent = select.parentNode;
-          parent.insertBefore(container, select);
-          container.appendChild(input);
-          container.appendChild(select);
-          const options = Array.from(select.options);
-          const update = function () {
-            const term = input.value.trim().toLowerCase();
-            options.forEach(function (option) {
-              if (!term) {
-                option.hidden = false;
+          input.className = 'combo-field__input';
+          input.autocomplete = 'off';
+          input.placeholder = select.getAttribute('data-placeholder') || (isMultiple ? 'Выберите варианты…' : 'Выберите…');
+          wrapper.appendChild(input);
+          const dropdown = document.createElement('div');
+          dropdown.className = 'combo-field__dropdown';
+          const list = document.createElement('ul');
+          list.className = 'combo-field__list';
+          dropdown.appendChild(list);
+          wrapper.appendChild(dropdown);
+          wrapper.appendChild(select);
+          select.style.display = 'none';
+
+          const options = Array.from(select.options).map(function (option) {
+            const item = document.createElement('li');
+            item.className = 'combo-field__item';
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'combo-field__option';
+            button.textContent = option.text || '—';
+            if (option.disabled) {
+              button.classList.add('combo-field__option--disabled');
+            }
+            item.appendChild(button);
+            list.appendChild(item);
+            return {
+              option: option,
+              item: item,
+              button: button,
+              text: (option.text || '').trim().toLowerCase(),
+              label: option.text || '—',
+            };
+          });
+
+          const filterOptions = function (term) {
+            const lowerTerm = term.trim().toLowerCase();
+            options.forEach(function (record) {
+              if (!lowerTerm) {
+                record.item.hidden = false;
                 return;
               }
-              if (option.selected) {
-                option.hidden = false;
-                return;
-              }
-              option.hidden = !option.text.toLowerCase().includes(term);
+              record.item.hidden = !record.label.toLowerCase().includes(lowerTerm);
             });
           };
-          input.addEventListener('input', update);
-          if (!select.multiple && select.selectedIndex >= 0) {
-            input.value = select.options[select.selectedIndex].text;
+
+          const updateOptionStyles = function () {
+            options.forEach(function (record) {
+              if (record.option.selected) {
+                record.button.classList.add('combo-field__option--selected');
+              } else {
+                record.button.classList.remove('combo-field__option--selected');
+              }
+            });
+          };
+
+          const renderTags = function () {
+            if (!tagContainer) {
+              return;
+            }
+            tagContainer.innerHTML = '';
+            Array.from(select.selectedOptions).forEach(function (opt) {
+              const tag = document.createElement('span');
+              tag.className = 'combo-field__tag';
+              tag.textContent = opt.text || '—';
+              const remove = document.createElement('button');
+              remove.type = 'button';
+              remove.className = 'combo-field__tag-remove';
+              remove.textContent = '×';
+              remove.addEventListener('click', function (event) {
+                event.preventDefault();
+                opt.selected = false;
+                updateOptionStyles();
+                renderTags();
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+              });
+              tag.appendChild(remove);
+              tagContainer.appendChild(tag);
+            });
+            tagContainer.hidden = tagContainer.childElementCount === 0;
+          };
+
+          const syncInputValue = function () {
+            if (isMultiple) {
+              input.value = '';
+              return;
+            }
+            const selected = select.selectedOptions[0];
+            input.value = selected ? selected.text : '';
+          };
+
+          let combo = null;
+          const open = function () {
+            if (combo) {
+              closeAllCombos(combo);
+            }
+            wrapper.classList.add('combo-field--open');
+            if (!isMultiple && input.dataset.searching !== '1') {
+              filterOptions('');
+              if (document.activeElement === input) {
+                input.select();
+              }
+            } else {
+              filterOptions(input.value);
+            }
+          };
+          const close = function () {
+            wrapper.classList.remove('combo-field--open');
+            if (!isMultiple) {
+              syncInputValue();
+            }
+          };
+          combo = { wrapper: wrapper, close: close };
+
+          options.forEach(function (record) {
+            record.button.addEventListener('mousedown', function (event) {
+              event.preventDefault();
+            });
+            record.button.addEventListener('click', function (event) {
+              event.preventDefault();
+              if (record.option.disabled) {
+                return;
+              }
+              if (isMultiple) {
+                record.option.selected = !record.option.selected;
+                updateOptionStyles();
+                renderTags();
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                input.value = '';
+                filterOptions('');
+                input.focus();
+              } else {
+                select.value = record.option.value;
+                updateOptionStyles();
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                close();
+              }
+            });
+          });
+
+          input.addEventListener('focus', function () {
+            input.dataset.searching = '0';
+            open();
+          });
+          input.addEventListener('click', function () {
+            input.dataset.searching = '0';
+            open();
+          });
+          input.addEventListener('input', function () {
+            input.dataset.searching = '1';
+            open();
+            filterOptions(input.value);
+          });
+          input.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+              input.blur();
+              close();
+            }
+          });
+          input.addEventListener('blur', function () {
+            window.setTimeout(function () {
+              if (!wrapper.contains(document.activeElement)) {
+                close();
+              }
+            }, 120);
+          });
+          select.addEventListener('change', function () {
+            updateOptionStyles();
+            renderTags();
+            if (!isMultiple) {
+              syncInputValue();
+              delete input.dataset.searching;
+            }
+          });
+
+          updateOptionStyles();
+          renderTags();
+          syncInputValue();
+
+          return combo;
+        }
+
+        document.querySelectorAll('select[data-live-search="true"]').forEach(function (select) {
+          const combo = createCombo(select);
+          if (combo) {
+            combos.push(combo);
           }
+        });
+
+        document.addEventListener('click', function (event) {
+          combos.forEach(function (combo) {
+            if (!combo.wrapper.contains(event.target)) {
+              combo.close();
+            }
+          });
+        });
+
+        const filterConfigs = new Map();
+        const getFilterConfig = function (table) {
+          if (!filterConfigs.has(table)) {
+            filterConfigs.set(table, { textInputs: [], from: null, to: null });
+          }
+          return filterConfigs.get(table);
+        };
+
+        const applyTableFilter = function (table) {
+          const config = filterConfigs.get(table);
+          if (!config) {
+            return;
+          }
+          const terms = config.textInputs
+            .map(function (input) {
+              return input.value.trim().toLowerCase();
+            })
+            .filter(function (term) {
+              return term.length > 0;
+            });
+          const from = config.from && config.from.value ? config.from.value : null;
+          const to = config.to && config.to.value ? config.to.value : null;
+          table.querySelectorAll('tbody tr').forEach(function (row) {
+            if (!row.dataset.filterValue && !row.dataset.lessonDate) {
+              return;
+            }
+            const value = (row.dataset.filterValue || row.textContent || '').toLowerCase();
+            const rowDate = row.dataset.lessonDate || null;
+            let visible = true;
+            if (terms.length) {
+              visible = terms.every(function (term) {
+                return value.includes(term);
+              });
+            }
+            if (visible && from && rowDate && rowDate < from) {
+              visible = false;
+            }
+            if (visible && to && rowDate && rowDate > to) {
+              visible = false;
+            }
+            row.hidden = !visible;
+          });
+        };
+
+        document.querySelectorAll('input[data-filter-target]').forEach(function (input) {
+          const selector = input.getAttribute('data-filter-target');
+          const table = document.querySelector(selector);
+          if (!table) {
+            return;
+          }
+          const config = getFilterConfig(table);
+          if (input.dataset.dateFilter === 'from') {
+            config.from = input;
+          } else if (input.dataset.dateFilter === 'to') {
+            config.to = input;
+          } else {
+            config.textInputs.push(input);
+          }
+          input.addEventListener('input', function () {
+            applyTableFilter(table);
+          });
+          applyTableFilter(table);
         });
       })();
     </script>

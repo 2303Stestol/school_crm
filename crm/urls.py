@@ -17,6 +17,7 @@ urlpatterns = [
     path("exercises/<int:pk>/delete/", views.exercise_delete, name="exercise_delete"),
     path("students/create/", views.student_create, name="student_create"),
     path("students/link-guardian/", views.student_guardian_link, name="student_guardian_link"),
+    path("roles/assign/", views.assign_role, name="assign_role"),
     path("students/<int:pk>/", views.student_detail, name="student_detail"),
     path("enrollments/create/", views.enrollment_create, name="enrollment_create"),
     path("subscriptions/create/", views.subscription_create, name="subscription_create"),

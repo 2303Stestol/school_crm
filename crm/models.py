@@ -129,7 +129,8 @@ class Course(TimestampedModel):
     title = models.CharField("Название", max_length=255)
     description = models.TextField("Описание", blank=True)
     schedule = models.CharField("Расписание", max_length=255, blank=True)
-    capacity = models.PositiveIntegerField("Максимальное количество учеников", blank=True, null=True)
+    start_date = models.DateField("Дата начала курса", default=timezone.localdate)
+    end_date = models.DateField("Дата окончания курса", blank=True, null=True)
     teacher = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="courses",
@@ -339,6 +340,7 @@ def generate_lessons_for_course(
     *,
     start_date=None,
     weeks_ahead: int = DEFAULT_LESSON_GENERATION_WEEKS,
+    end_date=None,
 ) -> int:
     """Create future lessons for the course based on weekday identifiers.
 
@@ -353,7 +355,10 @@ def generate_lessons_for_course(
         return 0
     if start_date is None:
         start_date = timezone.localdate()
-    end_date = start_date + timedelta(weeks=weeks_ahead)
+    if end_date is not None and end_date < start_date:
+        end_date = start_date
+    if end_date is None:
+        end_date = start_date + timedelta(weeks=weeks_ahead)
     created = 0
     for weekday in valid_weekdays:
         weekday_index = WEEKDAY_TO_INDEX[weekday]
