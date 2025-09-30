@@ -13,4 +13,5 @@
     {% for error in form.password.errors %}<div style="color: #dc2626;">{{ error }}</div>{% endfor %}
     <p><button class="btn" type="submit">Войти</button></p>
   </form>
+  <p>Нет аккаунта? <a href="{% url 'crm:parent_register' %}">Зарегистрируйтесь</a>.</p>
 {% endblock %}

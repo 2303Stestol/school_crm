@@ -1,5 +1,8 @@
+import logging
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Max, Prefetch, Q, Sum
 from django.db.models.functions import Coalesce
@@ -15,8 +18,10 @@ from .forms import (
     EnrollmentForm,
     GuardianLinkForm,
     LessonForm,
+    ParentRegistrationForm,
     StudentForm,
     SubscriptionForm,
+    _user_ordering,
 )
 from .models import (
     Attendance,
@@ -35,6 +40,9 @@ from .models import (
 ADMIN_GROUP = "Администраторы"
 TEACHER_GROUP = "Учителя"
 PARENT_GROUP = "Родители"
+
+
+logger = logging.getLogger(__name__)
 
 
 def is_admin(user) -> bool:
@@ -371,9 +379,8 @@ def student_create(request):
 def student_guardian_link(request):
     if not is_admin(request.user):
         return _forbidden()
-    guardian_queryset = get_user_model().objects.filter(groups__name=PARENT_GROUP).order_by(
-        "username"
-    )
+    user_model = get_user_model()
+    guardian_queryset = user_model.objects.order_by(*_user_ordering(user_model))
     form = GuardianLinkForm(request.POST or None, guardian_queryset=guardian_queryset)
     if request.method != "POST":
         student_id = request.GET.get("student")
@@ -404,6 +411,27 @@ def student_guardian_link(request):
         "crm/student_guardian_link.html",
         {"form": form, "next": next_url},
     )
+
+
+def parent_register(request):
+    if request.user.is_authenticated:
+        return redirect("crm:dashboard")
+    form = ParentRegistrationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user, password = form.save()
+        group, _ = Group.objects.get_or_create(name=PARENT_GROUP)
+        user.groups.add(group)
+        logger.info(
+            "Отправлен код подтверждения %s для пользователя %s",
+            password,
+            user.get_username(),
+        )
+        messages.success(
+            request,
+            "Регистрация прошла успешно. Введите код из сообщения в поле пароля при входе.",
+        )
+        return redirect("login")
+    return render(request, "registration/register.html", {"form": form})
 
 
 @login_required

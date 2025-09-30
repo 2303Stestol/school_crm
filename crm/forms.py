@@ -1,3 +1,6 @@
+import random
+import re
+
 from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
@@ -5,6 +8,13 @@ from django.core.exceptions import FieldDoesNotExist
 from .models import Course, Enrollment, Exercise, Lesson, Student, Subscription
 
 PARENT_GROUP_NAME = "Родители"
+
+
+def generate_verification_code(length: int = 6) -> str:
+    """Return a numeric verification code used as a temporary password."""
+
+    digits = "0123456789"
+    return "".join(random.choice(digits) for _ in range(length))
 
 
 def _guardian_label(user) -> str:
@@ -195,9 +205,7 @@ class GuardianLinkForm(LiveSearchMixin, forms.Form):
         user_model = get_user_model()
         if guardian_queryset is None:
             guardian_queryset = (
-                user_model.objects.filter(groups__name=PARENT_GROUP_NAME)
-                .order_by(*_user_ordering(user_model))
-                .distinct()
+                user_model.objects.order_by(*_user_ordering(user_model)).distinct()
             )
 
         self.fields["guardian"].queryset = guardian_queryset
@@ -212,4 +220,35 @@ class GuardianLinkForm(LiveSearchMixin, forms.Form):
         if not already_linked:
             student.guardians.add(guardian)
         return student, guardian, already_linked
+
+
+class ParentRegistrationForm(forms.Form):
+    first_name = forms.CharField(label="Имя", max_length=150)
+    last_name = forms.CharField(label="Фамилия", max_length=150)
+    phone_number = forms.CharField(label="Номер телефона", max_length=32)
+
+    def clean_phone_number(self):
+        raw_phone = self.cleaned_data["phone_number"]
+        digits = re.sub(r"\D", "", raw_phone or "")
+        if len(digits) < 10:
+            raise forms.ValidationError("Введите корректный номер телефона.")
+        normalized = f"+{digits}"
+        user_model = get_user_model()
+        username_field = getattr(user_model, "USERNAME_FIELD", "username") or "username"
+        if user_model._default_manager.filter(**{username_field: normalized}).exists():
+            raise forms.ValidationError("Пользователь с таким номером уже зарегистрирован.")
+        return normalized
+
+    def save(self):
+        user_model = get_user_model()
+        username_field = getattr(user_model, "USERNAME_FIELD", "username") or "username"
+        password = generate_verification_code()
+        create_kwargs = {
+            username_field: self.cleaned_data["phone_number"],
+            "first_name": self.cleaned_data["first_name"],
+            "last_name": self.cleaned_data["last_name"],
+            "password": password,
+        }
+        user = user_model.objects.create_user(**create_kwargs)
+        return user, password
 
