@@ -224,7 +224,14 @@ def course_detail(request, pk: int):
             ),
             Prefetch(
                 "enrollments",
-                queryset=Enrollment.objects.select_related("student").order_by("student__last_name"),
+                queryset=(
+                    Enrollment.objects.select_related("student")
+                    .prefetch_related(
+                        "student__attendances",
+                        "student__subscriptions",
+                    )
+                    .order_by("student__last_name")
+                ),
             ),
         ),
         pk=pk,
@@ -235,12 +242,16 @@ def course_detail(request, pk: int):
         student__guardians=request.user
     ).exists():
         return _forbidden()
+    enrollments = list(course.enrollments.all())
+    for enrollment in enrollments:
+        enrollment.debt_count = enrollment.student.lessons_balance()["debt"]
+
     return render(
         request,
         "crm/course_detail.html",
         {
             "course": course,
-            "enrollments": course.enrollments.all(),
+            "enrollments": enrollments,
             "lessons": course.lessons.all(),
             "can_edit": _can_manage_course(request.user, course),
             "can_manage_enrollments": is_admin(request.user),

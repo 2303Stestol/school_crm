@@ -1,77 +1,107 @@
 {% extends "crm/base.html" %}
 {% block title %}Курс {{ course.title }}{% endblock %}
 {% block content %}
-  <h1>{{ course.title }}</h1>
-  <p><strong>Преподаватель:</strong> {{ course.teacher|default:"Не назначен" }}</p>
-  <p><strong>Расписание:</strong> {{ course.schedule|default:"Не указано" }}</p>
-  <p><strong>Описание:</strong> {{ course.description|default:"—" }}</p>
-  {% if can_edit %}
-    <p><a class="btn" href="{% url 'crm:lesson_create' %}?course={{ course.pk }}">Добавить занятие</a></p>
-  {% endif %}
-  {% if can_manage_enrollments %}
-    <p>
-      <a class="btn" href="{% url 'crm:student_create' %}?course={{ course.pk }}">Добавить нового ученика</a>
-      <a class="btn btn-secondary" href="{% url 'crm:enrollment_create' %}?course={{ course.pk }}">Записать существующего ученика</a>
-    </p>
-  {% endif %}
-  <section>
-    <h2>Ученики</h2>
-    <table class="sheet-table">
-
-      <thead>
-        <tr>
-          <th>ФИО</th>
-          <th>Дата начала</th>
-          <th>Активна</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for enrollment in enrollments %}
-          <tr>
-            <td>{{ enrollment.student.full_name }}</td>
-            <td>{{ enrollment.start_date|date:"d.m.Y" }}</td>
-            <td>{{ enrollment.is_active|yesno:"Да,Нет" }}</td>
-          </tr>
-        {% empty %}
-          <tr>
-            <td colspan="3">Пока нет записанных учеников.</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>
-  <section>
-    <h2>Занятия</h2>
-    <table class="sheet-table">
-
-      <thead>
-        <tr>
-          <th>Дата</th>
-          <th>Тема</th>
-          <th>Упражнений</th>
-
-          {% if can_edit %}
-            <th>Действия</th>
-          {% endif %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for lesson in lessons %}
-          <tr>
-            <td>{{ lesson.date|date:"d.m.Y" }}</td>
-            <td>{{ lesson.topic|default:"—" }}</td>
-            <td>{{ lesson.exercises.all|length }}</td>
-
+  <div class="course-detail">
+    <div class="course-detail__intro">
+      <div class="course-detail__meta">
+        <h1 class="course-detail__title">{{ course.title }}</h1>
+        <dl>
+          <div>
+            <dt>Преподаватель</dt>
+            <dd>{{ course.teacher|default:"Не назначен" }}</dd>
+          </div>
+          <div>
+            <dt>Расписание</dt>
+            <dd>{{ course.schedule|default:"Не указано" }}</dd>
+          </div>
+          <div>
+            <dt>Описание</dt>
+            <dd>{{ course.description|default:"—" }}</dd>
+          </div>
+        </dl>
+      </div>
+      <div class="course-detail__actions">
+        {% if can_edit %}
+          <a class="btn" href="{% url 'crm:lesson_create' %}?course={{ course.pk }}">Добавить занятие</a>
+        {% endif %}
+        {% if can_manage_enrollments %}
+          <a class="btn" href="{% url 'crm:student_create' %}?course={{ course.pk }}">Добавить нового ученика</a>
+          <a class="btn btn-secondary" href="{% url 'crm:enrollment_create' %}?course={{ course.pk }}">Записать существующего ученика</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="course-detail__grid">
+      <section class="course-detail__section">
+        <div class="course-detail__section-header">
+          <h2>Ученики</h2>
+        </div>
+        <div class="sheet-scroll">
+          <table class="sheet-table">
+            <thead>
+              <tr>
+                <th>ФИО</th>
+                <th>Дата начала</th>
+                <th>Активна</th>
+                <th>Задолженности</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for enrollment in enrollments %}
+                <tr>
+                  <td>{{ enrollment.student.full_name }}</td>
+                  <td>{{ enrollment.start_date|date:"d.m.Y" }}</td>
+                  <td>{{ enrollment.is_active|yesno:"Да,Нет" }}</td>
+                  <td>{{ enrollment.debt_count }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="4" class="course-detail__empty">Пока нет записанных учеников.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="course-detail__section">
+        <div class="course-detail__section-header">
+          <div class="course-detail__section-header-main">
+            <h2>Занятия</h2>
             {% if can_edit %}
-              <td><a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Отметить посещаемость</a></td>
+              <span class="course-detail__hint">Отметьте посещаемость, чтобы следить за долгами</span>
             {% endif %}
-          </tr>
-        {% empty %}
-          <tr>
-            <td colspan="3">Занятия ещё не созданы.</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>
+          </div>
+        </div>
+        <div class="sheet-scroll">
+          <table class="sheet-table">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Тема</th>
+                <th>Упражнений</th>
+                {% if can_edit %}
+                  <th>Действия</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for lesson in lessons %}
+                <tr>
+                  <td>{{ lesson.date|date:"d.m.Y" }}</td>
+                  <td>{{ lesson.topic|default:"—" }}</td>
+                  <td>{{ lesson.exercises.all|length }}</td>
+                  {% if can_edit %}
+                    <td><a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Отметить посещаемость</a></td>
+                  {% endif %}
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="{% if can_edit %}4{% else %}3{% endif %}" class="course-detail__empty">Занятия ещё не созданы.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
 {% endblock %}
