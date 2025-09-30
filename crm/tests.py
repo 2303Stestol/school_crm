@@ -113,6 +113,16 @@ class ModelTests(TestCase):
         self.assertEqual(guardian, new_parent)
         self.assertIn(new_parent, self.student.guardians.all())
 
+    def test_guardian_link_form_defaults_show_parents(self) -> None:
+        form = GuardianLinkForm()
+        guardian_field = form.fields["guardian"]
+        student_field = form.fields["student"]
+        self.assertIsNone(guardian_field.empty_label)
+        self.assertIsNone(student_field.empty_label)
+        guardians = list(guardian_field.queryset)
+        self.assertIn(self.parent_user, guardians)
+        self.assertNotIn(self.teacher_user, guardians)
+
     def test_student_can_be_enrolled_to_multiple_courses(self) -> None:
         first_enrollment = models.Enrollment.objects.create(
             student=self.student,
