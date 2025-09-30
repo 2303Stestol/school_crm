@@ -2,7 +2,7 @@
 {% block title %}Новый абонемент{% endblock %}
 {% block content %}
   <h1>Новый абонемент</h1>
-  <form method="post">
+  <form method="post" class="sheet-card" style="max-width: 520px;">
     {% csrf_token %}
     {{ form.non_field_errors }}
     {% for field in form %}
@@ -11,6 +11,23 @@
       {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
       {% for error in field.errors %}<div style="color: #dc2626;">{{ error }}</div>{% endfor %}
     {% endfor %}
-    <p><button class="btn" type="submit">Сохранить</button></p>
+    <p style="margin-top: 1.5rem;"><button class="btn" type="submit">Сохранить</button></p>
   </form>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var courseField = document.getElementById("id_course");
+      if (!courseField) {
+        return;
+      }
+      courseField.addEventListener("change", function () {
+        var params = new URLSearchParams(window.location.search);
+        if (this.value) {
+          params.set("course", this.value);
+        } else {
+          params.delete("course");
+        }
+        window.location.search = params.toString();
+      });
+    });
+  </script>
 {% endblock %}

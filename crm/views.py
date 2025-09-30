@@ -36,6 +36,7 @@ from .models import (
     Lesson,
     Student,
     Subscription,
+    generate_lessons_for_course,
 )
 
 from .phone_codes import append_phone_code
@@ -138,7 +139,11 @@ def dashboard(request):
                 ),
                 Prefetch(
                     "attendances",
-                    queryset=Attendance.objects.only("id", "status", "student_id").order_by("-lesson__date"),
+                    queryset=(
+                        Attendance.objects.select_related("lesson")
+                        .only("id", "status", "student_id", "lesson__date")
+                        .order_by("-lesson__date")
+                    ),
                 ),
             ).order_by("last_name", "first_name")
         )
@@ -279,6 +284,43 @@ def lesson_create(request):
 
 
 @login_required
+def lesson_update(request, pk: int):
+    lesson = get_object_or_404(
+        Lesson.objects.select_related("course", "course__teacher"), pk=pk
+    )
+    user = request.user
+    if not _can_manage_course(user, lesson.course):
+        return _forbidden()
+    form = LessonForm(request.POST or None, instance=lesson)
+    if is_teacher(user) and not is_admin(user):
+        form.fields["course"].queryset = Course.objects.filter(teacher=user)
+    if request.method == "POST" and form.is_valid():
+        lesson = form.save()
+        messages.success(request, "Занятие обновлено")
+        return redirect("crm:lesson_manage", pk=lesson.pk)
+    return render(request, "crm/lesson_form.html", {"form": form, "lesson": lesson})
+
+
+@login_required
+def lesson_delete(request, pk: int):
+    lesson = get_object_or_404(
+        Lesson.objects.select_related("course", "course__teacher"), pk=pk
+    )
+    if not _can_manage_course(request.user, lesson.course):
+        return _forbidden()
+    course_pk = lesson.course_id
+    if request.method == "POST":
+        lesson.delete()
+        messages.success(request, "Занятие удалено")
+        return redirect("crm:course_detail", pk=course_pk)
+    return render(
+        request,
+        "crm/lesson_confirm_delete.html",
+        {"lesson": lesson, "course": lesson.course},
+    )
+
+
+@login_required
 def lesson_manage(request, pk: int):
     lesson = get_object_or_404(
         Lesson.objects.select_related("course", "course__teacher")
@@ -372,6 +414,46 @@ def lesson_manage(request, pk: int):
 
 
 @login_required
+def exercise_update(request, pk: int):
+    exercise = get_object_or_404(
+        Exercise.objects.select_related("lesson", "lesson__course", "lesson__course__teacher"),
+        pk=pk,
+    )
+    if not _can_manage_course(request.user, exercise.lesson.course):
+        return _forbidden()
+    form = ExerciseForm(request.POST or None, instance=exercise)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Упражнение обновлено")
+        return redirect("crm:lesson_manage", pk=exercise.lesson_id)
+    return render(
+        request,
+        "crm/exercise_form.html",
+        {"form": form, "exercise": exercise, "lesson": exercise.lesson},
+    )
+
+
+@login_required
+def exercise_delete(request, pk: int):
+    exercise = get_object_or_404(
+        Exercise.objects.select_related("lesson", "lesson__course", "lesson__course__teacher"),
+        pk=pk,
+    )
+    if not _can_manage_course(request.user, exercise.lesson.course):
+        return _forbidden()
+    lesson_id = exercise.lesson_id
+    if request.method == "POST":
+        exercise.delete()
+        messages.success(request, "Упражнение удалено")
+        return redirect("crm:lesson_manage", pk=lesson_id)
+    return render(
+        request,
+        "crm/exercise_confirm_delete.html",
+        {"exercise": exercise, "lesson": exercise.lesson, "course": exercise.lesson.course},
+    )
+
+
+@login_required
 def student_detail(request, pk: int):
     student = get_object_or_404(
         Student.objects.prefetch_related(
@@ -419,8 +501,16 @@ def course_create(request):
     form = CourseForm(request.POST or None)
     form.fields["teacher"].queryset = get_user_model().objects.filter(groups__name=TEACHER_GROUP)
     if request.method == "POST" and form.is_valid():
+        weekdays = form.cleaned_data.get("schedule_days") or []
         course = form.save()
-        messages.success(request, "Курс создан")
+        created_lessons = generate_lessons_for_course(course, weekdays)
+        if created_lessons:
+            messages.success(
+                request,
+                f"Курс создан. Автоматически добавлено занятий: {created_lessons}.",
+            )
+        else:
+            messages.success(request, "Курс создан")
         return redirect("crm:course_detail", pk=course.pk)
     return render(request, "crm/course_form.html", {"form": form})
 
@@ -532,7 +622,12 @@ def enrollment_create(request):
 def subscription_create(request):
     if not is_admin(request.user):
         return _forbidden()
-    form = SubscriptionForm(request.POST or None)
+    initial = None
+    if request.method != "POST":
+        course_id = request.GET.get("course")
+        if course_id:
+            initial = {"course": course_id}
+    form = SubscriptionForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         subscription = form.save()
         messages.success(request, "Абонемент сохранён")

@@ -1,0 +1,11 @@
+{% extends "crm/base.html" %}
+{% block title %}Удаление занятия{% endblock %}
+{% block content %}
+  <h1>Удалить занятие</h1>
+  <p style="color: #5f6368;">Подтвердите удаление занятия {{ lesson.date|date:"d.m.Y" }} курса «{{ course.title }}».</p>
+  <form method="post" style="display: inline-flex; gap: 0.75rem;">
+    {% csrf_token %}
+    <button class="btn btn-danger" type="submit">Удалить</button>
+    <a class="btn btn-back" href="{% url 'crm:course_detail' course.pk %}">Отмена</a>
+  </form>
+{% endblock %}

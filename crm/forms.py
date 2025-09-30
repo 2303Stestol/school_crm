@@ -5,7 +5,16 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
 
-from .models import Course, Enrollment, Exercise, Lesson, Student, Subscription
+from .models import (
+    Course,
+    Enrollment,
+    Exercise,
+    Lesson,
+    Student,
+    Subscription,
+    WEEKDAY_CHOICES,
+    WEEKDAY_TO_INDEX,
+)
 
 PARENT_GROUP_NAME = "Родители"
 
@@ -89,10 +98,31 @@ class LessonForm(LiveSearchMixin, forms.ModelForm):
 
 class CourseForm(LiveSearchMixin, forms.ModelForm):
     live_search_fields = ("teacher",)
+    schedule_days = forms.MultipleChoiceField(
+        label="Дни занятий",
+        required=False,
+        choices=WEEKDAY_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Выберите дни недели, чтобы автоматически создавать будущие занятия.",
+    )
 
     class Meta:
         model = Course
-        fields = ["title", "description", "schedule", "capacity", "teacher"]
+        fields = ["title", "description", "capacity", "teacher"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["schedule_days"].initial = self.instance.schedule_days
+
+    def save(self, commit: bool = True):
+        instance: Course = super().save(commit=False)
+        schedule_days = self.cleaned_data.get("schedule_days") or []
+        ordered = sorted(schedule_days, key=lambda value: WEEKDAY_TO_INDEX.get(value, 0))
+        instance.schedule = ",".join(ordered)
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
 
 
 class StudentForm(LiveSearchMixin, forms.ModelForm):
@@ -178,6 +208,49 @@ class SubscriptionForm(LiveSearchMixin, forms.ModelForm):
             "is_active",
         ]
         widgets = {"purchase_date": DateInput()}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["course"].queryset = Course.objects.order_by("title")
+        self.fields["student"].queryset = Student.objects.none()
+        selected_course = None
+        if self.data.get("course"):
+            try:
+                selected_course = int(self.data.get("course"))
+            except (TypeError, ValueError):
+                selected_course = None
+        elif self.initial.get("course"):
+            initial_course = self.initial.get("course")
+            if isinstance(initial_course, Course):
+                selected_course = initial_course.pk
+            else:
+                selected_course = initial_course
+        if selected_course:
+            self.fields["student"].queryset = (
+                Student.objects.filter(
+                    enrollments__course_id=selected_course,
+                    enrollments__is_active=True,
+                )
+                .order_by("last_name", "first_name")
+                .distinct()
+            )
+        else:
+            self.fields["student"].help_text = "Сначала выберите курс, чтобы выбрать ученика."
+
+    def clean_student(self):
+        student = self.cleaned_data.get("student")
+        course = self.cleaned_data.get("course")
+        if student and course:
+            exists = Enrollment.objects.filter(
+                student=student,
+                course=course,
+                is_active=True,
+            ).exists()
+            if not exists:
+                raise forms.ValidationError(
+                    "Ученик не записан на выбранный курс. Выберите другого ученика."
+                )
+        return student
 
 
 class ExerciseForm(forms.ModelForm):
