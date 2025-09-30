@@ -1,8 +1,10 @@
 import random
 import re
+from datetime import timedelta
 
 from django import forms
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.core.exceptions import FieldDoesNotExist
 
 from .models import (
@@ -16,6 +18,8 @@ from .models import (
     WEEKDAY_TO_INDEX,
 )
 
+ADMIN_GROUP_NAME = "Администраторы"
+TEACHER_GROUP_NAME = "Учителя"
 PARENT_GROUP_NAME = "Родители"
 
 
@@ -108,11 +112,26 @@ class CourseForm(LiveSearchMixin, forms.ModelForm):
 
     class Meta:
         model = Course
-        fields = ["title", "description", "capacity", "teacher"]
+        fields = ["title", "description", "teacher", "start_date", "end_date"]
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 3}),
+            "start_date": DateInput(),
+            "end_date": DateInput(),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["schedule_days"].initial = self.instance.schedule_days
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get("start_date")
+        end_date = cleaned_data.get("end_date")
+        if start_date and not end_date:
+            cleaned_data["end_date"] = start_date + timedelta(days=365)
+        if start_date and end_date and end_date < start_date:
+            cleaned_data["end_date"] = start_date + timedelta(days=365)
+        return cleaned_data
 
     def save(self, commit: bool = True):
         instance: Course = super().save(commit=False)
@@ -304,6 +323,46 @@ class GuardianLinkForm(LiveSearchMixin, forms.Form):
         if not already_linked:
             student.guardians.add(guardian)
         return student, guardian, already_linked
+
+
+class RoleAssignmentForm(LiveSearchMixin, forms.Form):
+    live_search_fields = ("user",)
+
+    ROLE_CHOICES = (
+        ("admin", "Администратор"),
+        ("teacher", "Преподаватель"),
+        ("none", "Снять роль"),
+    )
+
+    user = forms.ModelChoiceField(
+        queryset=get_user_model().objects.none(),
+        label="Пользователь",
+    )
+    role = forms.ChoiceField(
+        choices=ROLE_CHOICES,
+        label="Назначение",
+        widget=forms.RadioSelect,
+    )
+
+    def __init__(self, *args, user_queryset=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        user_model = get_user_model()
+        if user_queryset is None:
+            user_queryset = user_model.objects.order_by(*_user_ordering(user_model))
+        self.fields["user"].queryset = user_queryset
+        self.fields["user"].label_from_instance = _guardian_label
+
+    def save(self):
+        user = self.cleaned_data["user"]
+        role = self.cleaned_data["role"]
+        admin_group, _ = Group.objects.get_or_create(name=ADMIN_GROUP_NAME)
+        teacher_group, _ = Group.objects.get_or_create(name=TEACHER_GROUP_NAME)
+        user.groups.remove(admin_group, teacher_group)
+        if role == "admin":
+            user.groups.add(admin_group)
+        elif role == "teacher":
+            user.groups.add(teacher_group)
+        return user, role
 
 
 class ParentRegistrationForm(forms.Form):

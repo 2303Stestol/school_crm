@@ -13,15 +13,19 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from .forms import (
+    ADMIN_GROUP_NAME,
     CourseForm,
     ExerciseForm,
     EnrollmentForm,
     GuardianLinkForm,
     LessonForm,
+    PARENT_GROUP_NAME,
     PhoneLoginForm,
     ParentRegistrationForm,
+    RoleAssignmentForm,
     StudentForm,
     SubscriptionForm,
+    TEACHER_GROUP_NAME,
     _user_ordering,
 )
 from .forms import generate_verification_code
@@ -42,9 +46,9 @@ from .models import (
 from .phone_codes import append_phone_code
 
 
-ADMIN_GROUP = "Администраторы"
-TEACHER_GROUP = "Учителя"
-PARENT_GROUP = "Родители"
+ADMIN_GROUP = ADMIN_GROUP_NAME
+TEACHER_GROUP = TEACHER_GROUP_NAME
+PARENT_GROUP = PARENT_GROUP_NAME
 
 
 logger = logging.getLogger(__name__)
@@ -145,6 +149,13 @@ def dashboard(request):
                         .order_by("-lesson__date")
                     ),
                 ),
+                Prefetch(
+                    "enrollments",
+                    queryset=(
+                        Enrollment.objects.select_related("course__teacher")
+                        .order_by("course__title")
+                    ),
+                ),
             ).order_by("last_name", "first_name")
         )
         students_with_debt: list[dict[str, object]] = []
@@ -152,6 +163,22 @@ def dashboard(request):
             balance = student.lessons_balance()
             if balance["debt"]:
                 students_with_debt.append({"student": student, "balance": balance})
+            guardian_names: list[str] = []
+            for guardian in student.guardians.all():
+                full_name = (guardian.get_full_name() or "").strip()
+                guardian_names.append(full_name or guardian.get_username())
+            student.guardian_display = ", ".join(filter(None, guardian_names)) or "—"
+            teacher_names: list[str] = []
+            for enrollment in student.enrollments.all():
+                teacher = getattr(getattr(enrollment, "course", None), "teacher", None)
+                if not teacher:
+                    continue
+                full_name = (teacher.get_full_name() or "").strip()
+                name = full_name or teacher.get_username()
+                if name and name not in teacher_names:
+                    teacher_names.append(name)
+            student.teacher_display = ", ".join(teacher_names) or "—"
+
         context = {
             "role": "admin",
             "courses": Course.objects.select_related("teacher").order_by("title"),
@@ -251,13 +278,28 @@ def course_detail(request, pk: int):
     for enrollment in enrollments:
         enrollment.debt_count = enrollment.student.lessons_balance()["debt"]
 
+    lessons = list(course.lessons.all())
+    today = timezone.localdate()
+    past_lessons = sorted(
+        (lesson for lesson in lessons if lesson.date < today),
+        key=lambda lesson: lesson.date,
+        reverse=True,
+    )
+    upcoming_lessons = sorted(
+        (lesson for lesson in lessons if lesson.date >= today),
+        key=lambda lesson: lesson.date,
+    )
+    all_lessons = sorted(lessons, key=lambda lesson: lesson.date)
+
     return render(
         request,
         "crm/course_detail.html",
         {
             "course": course,
             "enrollments": enrollments,
-            "lessons": course.lessons.all(),
+            "all_lessons": all_lessons,
+            "recent_past_lessons": past_lessons[:5],
+            "upcoming_lessons": upcoming_lessons[:5],
             "can_edit": _can_manage_course(request.user, course),
             "can_manage_enrollments": is_admin(request.user),
         },
@@ -503,11 +545,19 @@ def course_create(request):
     if request.method == "POST" and form.is_valid():
         weekdays = form.cleaned_data.get("schedule_days") or []
         course = form.save()
-        created_lessons = generate_lessons_for_course(course, weekdays)
+        created_lessons = generate_lessons_for_course(
+            course,
+            weekdays,
+            start_date=course.start_date,
+            end_date=course.end_date,
+        )
         if created_lessons:
             messages.success(
                 request,
-                f"Курс создан. Автоматически добавлено занятий: {created_lessons}.",
+                (
+                    "Курс создан. Автоматически добавлено занятий: "
+                    f"{created_lessons}."
+                ),
             )
         else:
             messages.success(request, "Курс создан")
@@ -575,6 +625,34 @@ def student_guardian_link(request):
         "crm/student_guardian_link.html",
         {"form": form, "next": next_url},
     )
+
+
+@login_required
+def assign_role(request):
+    if not is_admin(request.user):
+        return _forbidden()
+    user_model = get_user_model()
+    user_queryset = user_model.objects.order_by(*_user_ordering(user_model))
+    form = RoleAssignmentForm(request.POST or None, user_queryset=user_queryset)
+    if request.method == "POST" and form.is_valid():
+        user, role = form.save()
+        if role == "admin":
+            messages.success(
+                request,
+                f"Пользователь {user.get_username()} назначен администратором.",
+            )
+        elif role == "teacher":
+            messages.success(
+                request,
+                f"Пользователь {user.get_username()} назначен преподавателем.",
+            )
+        else:
+            messages.success(
+                request,
+                f"У пользователя {user.get_username()} сняты роли администратора и преподавателя.",
+            )
+        return redirect("crm:assign_role")
+    return render(request, "crm/assign_role.html", {"form": form})
 
 
 def parent_register(request):
