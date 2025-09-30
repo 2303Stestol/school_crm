@@ -5,13 +5,18 @@
   <form method="post">
     {% csrf_token %}
     {{ form.non_field_errors }}
-    <label for="id_username">Имя пользователя</label>
-    {{ form.username }}
-    {% for error in form.username.errors %}<div style="color: #dc2626;">{{ error }}</div>{% endfor %}
-    <label for="id_password">Пароль</label>
-    {{ form.password }}
-    {% for error in form.password.errors %}<div style="color: #dc2626;">{{ error }}</div>{% endfor %}
-    <p><button class="btn" type="submit">Войти</button></p>
+    <label for="id_phone_number">Номер телефона</label>
+    {{ form.phone_number }}
+    {% for error in form.phone_number.errors %}<div style="color: #dc2626;">{{ error }}</div>{% endfor %}
+    {% if stage == "verify" %}
+      <label for="id_code">Код подтверждения</label>
+      {{ form.code }}
+      {% for error in form.code.errors %}<div style="color: #dc2626;">{{ error }}</div>{% endfor %}
+      <p>Введите код из файла с подтверждениями и нажмите «Войти».</p>
+    {% else %}
+      <p>Мы отправим новый код подтверждения в файл после отправки формы.</p>
+    {% endif %}
+    <p><button class="btn" type="submit">{% if stage == "verify" %}Войти{% else %}Получить код{% endif %}</button></p>
   </form>
   <p>Нет аккаунта? <a href="{% url 'crm:parent_register' %}">Зарегистрируйтесь</a>.</p>
 {% endblock %}

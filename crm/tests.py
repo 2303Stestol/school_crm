@@ -1,9 +1,11 @@
+import os
+import tempfile
 from datetime import date
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from crm import models
@@ -168,24 +170,32 @@ class ModelTests(TestCase):
 class RegistrationTests(TestCase):
     @patch("crm.forms.generate_verification_code", return_value="654321")
     def test_parent_registration_creates_user_with_parent_group(self, code_generator) -> None:
-        with self.assertLogs("crm.views", level="INFO") as log_capture:
-            response = self.client.post(
-                reverse("crm:parent_register"),
-                {
-                    "first_name": "Мария",
-                    "last_name": "Иванова",
-                    "phone_number": "+7 (999) 000-00-00",
-                },
-            )
-        self.assertRedirects(response, reverse("login"))
-        user_model = get_user_model()
-        user = user_model.objects.get(username="+79990000000")
-        self.assertTrue(user.check_password("654321"))
-        self.assertEqual(user.first_name, "Мария")
-        self.assertEqual(user.last_name, "Иванова")
-        parent_group = Group.objects.get(name="Родители")
-        self.assertIn(parent_group, user.groups.all())
-        self.assertTrue(any("654321" in message for message in log_capture.output))
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            codes_path = os.path.join(tmp_dir, "codes.log")
+            with override_settings(VERIFICATION_CODES_FILE=codes_path):
+                with self.assertLogs("crm.views", level="INFO") as log_capture:
+                    response = self.client.post(
+                        reverse("crm:parent_register"),
+                        {
+                            "first_name": "Мария",
+                            "last_name": "Иванова",
+                            "phone_number": "+7 (999) 000-00-00",
+                        },
+                    )
+                self.assertRedirects(response, reverse("login"))
+                user_model = get_user_model()
+                user = user_model.objects.get(username="+79990000000")
+                self.assertTrue(user.check_password("654321"))
+                self.assertEqual(user.first_name, "Мария")
+                self.assertEqual(user.last_name, "Иванова")
+                parent_group = Group.objects.get(name="Родители")
+                self.assertIn(parent_group, user.groups.all())
+                self.assertTrue(any("654321" in message for message in log_capture.output))
+                self.assertTrue(os.path.exists(codes_path))
+                with open(codes_path, "r", encoding="utf-8") as stored:
+                    saved_codes = stored.read()
+                self.assertIn("+79990000000", saved_codes)
+                self.assertIn("654321", saved_codes)
 
     def test_parent_registration_validates_unique_phone(self) -> None:
         user_model = get_user_model()
@@ -201,3 +211,77 @@ class RegistrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Пользователь с таким номером уже зарегистрирован.")
 
+
+class LoginTests(TestCase):
+    def setUp(self) -> None:
+        self.user_model = get_user_model()
+        self.phone_number = "+79990000000"
+        self.user = self.user_model.objects.create_user(
+            username=self.phone_number,
+            password="initialpass123",
+            first_name="Мария",
+        )
+
+    def _login_url(self) -> str:
+        return reverse("login")
+
+    def _dashboard_url(self) -> str:
+        return reverse("crm:dashboard")
+
+    @patch("crm.views.generate_verification_code", return_value="111222")
+    def test_login_request_generates_code_and_updates_password(self, code_generator) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            codes_path = os.path.join(tmp_dir, "codes.log")
+            with override_settings(VERIFICATION_CODES_FILE=codes_path):
+                response = self.client.post(
+                    self._login_url(),
+                    {"phone_number": "+7 (999) 000-00-00"},
+                )
+                self.assertRedirects(response, self._login_url())
+                self.user.refresh_from_db()
+                self.assertTrue(self.user.check_password("111222"))
+                with open(codes_path, "r", encoding="utf-8") as stored:
+                    saved_codes = stored.read()
+                self.assertIn(self.phone_number, saved_codes)
+                self.assertIn("111222", saved_codes)
+
+    @patch("crm.views.generate_verification_code", return_value="333444")
+    def test_login_with_correct_code_logs_user_in(self, code_generator) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            codes_path = os.path.join(tmp_dir, "codes.log")
+            with override_settings(VERIFICATION_CODES_FILE=codes_path):
+                self.client.post(
+                    self._login_url(),
+                    {"phone_number": "+7 (999) 000-00-00"},
+                )
+                response = self.client.post(
+                    self._login_url(),
+                    {"phone_number": "+7 (999) 000-00-00", "code": "333444"},
+                )
+                self.assertRedirects(response, self._dashboard_url())
+                self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    @patch("crm.views.generate_verification_code", return_value="555666")
+    def test_login_with_wrong_code_shows_error(self, code_generator) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            codes_path = os.path.join(tmp_dir, "codes.log")
+            with override_settings(VERIFICATION_CODES_FILE=codes_path):
+                self.client.post(
+                    self._login_url(),
+                    {"phone_number": "+7 (999) 000-00-00"},
+                )
+                response = self.client.post(
+                    self._login_url(),
+                    {"phone_number": "+7 (999) 000-00-00", "code": "000000"},
+                    follow=True,
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, "Неверный код")
+
+    def test_login_with_unknown_phone_shows_error(self) -> None:
+        response = self.client.post(
+            self._login_url(),
+            {"phone_number": "+7 (888) 000-00-00"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Пользователь с таким номером не найден.")
