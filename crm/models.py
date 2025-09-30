@@ -1,6 +1,33 @@
+from datetime import timedelta
+from typing import Iterable
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+
+
+WEEKDAY_CHOICES = [
+    ("mon", "Понедельник"),
+    ("tue", "Вторник"),
+    ("wed", "Среда"),
+    ("thu", "Четверг"),
+    ("fri", "Пятница"),
+    ("sat", "Суббота"),
+    ("sun", "Воскресенье"),
+]
+
+WEEKDAY_LABELS = {value: label for value, label in WEEKDAY_CHOICES}
+WEEKDAY_TO_INDEX = {
+    "mon": 0,
+    "tue": 1,
+    "wed": 2,
+    "thu": 3,
+    "fri": 4,
+    "sat": 5,
+    "sun": 6,
+}
+
+DEFAULT_LESSON_GENERATION_WEEKS = 4
 
 
 class TimestampedModel(models.Model):
@@ -42,8 +69,10 @@ class Student(TimestampedModel):
         return " ".join(part for part in parts if part).strip()
 
     def billable_attendances(self):
+        today = timezone.localdate()
         return self.attendances.filter(
-            status__in=(AttendanceStatus.PRESENT, AttendanceStatus.ABSENT)
+            status__in=(AttendanceStatus.PRESENT, AttendanceStatus.ABSENT),
+            lesson__date__lte=today,
         )
 
     def billable_attendance_count(self) -> int:
@@ -54,10 +83,14 @@ class Student(TimestampedModel):
         if hasattr(self, "_prefetched_objects_cache"):
             prefetched_attendances = self._prefetched_objects_cache.get("attendances")
         if prefetched_attendances is not None:
+            today = timezone.localdate()
             return sum(
                 1
                 for attendance in prefetched_attendances
-                if attendance.status in (AttendanceStatus.PRESENT, AttendanceStatus.ABSENT)
+                if attendance.status
+                in (AttendanceStatus.PRESENT, AttendanceStatus.ABSENT)
+                and getattr(attendance.lesson, "date", None) is not None
+                and attendance.lesson.date <= today
             )
         return self.billable_attendances().count()
 
@@ -113,6 +146,18 @@ class Course(TimestampedModel):
 
     def __str__(self) -> str:
         return self.title
+
+    @property
+    def schedule_days(self) -> list[str]:
+        if not self.schedule:
+            return []
+        return [value for value in self.schedule.split(",") if value in WEEKDAY_LABELS]
+
+    def schedule_display(self) -> str:
+        days = self.schedule_days
+        if days:
+            return ", ".join(WEEKDAY_LABELS[day] for day in days)
+        return self.schedule
 
 
 class Enrollment(TimestampedModel):
@@ -286,4 +331,42 @@ class Subscription(TimestampedModel):
 
     def __str__(self) -> str:
         return f"{self.course.title} для {self.student.full_name}"
+
+
+def generate_lessons_for_course(
+    course: Course,
+    weekdays: Iterable[str],
+    *,
+    start_date=None,
+    weeks_ahead: int = DEFAULT_LESSON_GENERATION_WEEKS,
+) -> int:
+    """Create future lessons for the course based on weekday identifiers.
+
+    Returns the number of new lessons that were created. Existing lessons are
+    left untouched.
+    """
+
+    if not weekdays:
+        return 0
+    valid_weekdays = [value for value in weekdays if value in WEEKDAY_TO_INDEX]
+    if not valid_weekdays:
+        return 0
+    if start_date is None:
+        start_date = timezone.localdate()
+    end_date = start_date + timedelta(weeks=weeks_ahead)
+    created = 0
+    for weekday in valid_weekdays:
+        weekday_index = WEEKDAY_TO_INDEX[weekday]
+        delta_days = (weekday_index - start_date.weekday()) % 7
+        current_date = start_date + timedelta(days=delta_days)
+        while current_date <= end_date:
+            _, was_created = Lesson.objects.get_or_create(
+                course=course,
+                date=current_date,
+                defaults={"topic": ""},
+            )
+            if was_created:
+                created += 1
+            current_date += timedelta(days=7)
+    return created
 

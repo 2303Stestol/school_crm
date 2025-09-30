@@ -1,0 +1,11 @@
+{% extends "crm/base.html" %}
+{% block title %}Удаление упражнения{% endblock %}
+{% block content %}
+  <h1>Удалить упражнение</h1>
+  <p style="color: #5f6368;">Вы уверены, что хотите удалить упражнение <strong>{{ exercise.title }}</strong> из занятия {{ lesson.date|date:"d.m.Y" }} курса «{{ course.title }}»?</p>
+  <form method="post" style="display: inline-flex; gap: 0.75rem;">
+    {% csrf_token %}
+    <button class="btn btn-danger" type="submit">Удалить</button>
+    <a class="btn btn-back" href="{% url 'crm:lesson_manage' lesson.pk %}">Отмена</a>
+  </form>
+{% endblock %}

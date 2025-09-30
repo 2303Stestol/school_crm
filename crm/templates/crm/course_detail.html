@@ -12,7 +12,7 @@
           </div>
           <div>
             <dt>Расписание</dt>
-            <dd>{{ course.schedule|default:"Не указано" }}</dd>
+            <dd>{{ course.schedule_display|default:"Не указано" }}</dd>
           </div>
           <div>
             <dt>Описание</dt>
@@ -90,7 +90,13 @@
                   <td>{{ lesson.topic|default:"—" }}</td>
                   <td>{{ lesson.exercises.all|length }}</td>
                   {% if can_edit %}
-                    <td><a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Отметить посещаемость</a></td>
+                    <td>
+                      <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        <a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Отметить посещаемость</a>
+                        <a class="btn btn-secondary" href="{% url 'crm:lesson_update' lesson.pk %}">Редактировать</a>
+                        <a class="btn btn-danger" href="{% url 'crm:lesson_delete' lesson.pk %}">Удалить</a>
+                      </div>
+                    </td>
                   {% endif %}
                 </tr>
               {% empty %}

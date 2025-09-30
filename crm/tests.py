@@ -1,15 +1,16 @@
 import os
 import tempfile
-from datetime import date
+from datetime import date, timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from crm import models
-from crm.forms import EnrollmentForm, GuardianLinkForm
+from crm.forms import EnrollmentForm, GuardianLinkForm, SubscriptionForm
 
 
 class ModelTests(TestCase):
@@ -98,6 +99,38 @@ class ModelTests(TestCase):
         self.assertEqual(balance["remaining"], 0)
         self.assertEqual(balance["debt"], 1)
 
+    def test_lessons_balance_ignores_future_lessons(self) -> None:
+        today = timezone.localdate()
+        future_day = today + timedelta(days=7)
+        models.Subscription.objects.create(
+            student=self.student,
+            course=self.course,
+            lessons_included=1,
+            price=3000,
+            purchase_date=today,
+        )
+        past_lesson = models.Lesson.objects.create(
+            course=self.course,
+            date=today,
+        )
+        future_lesson = models.Lesson.objects.create(
+            course=self.course,
+            date=future_day,
+        )
+        models.Attendance.objects.create(
+            lesson=past_lesson,
+            student=self.student,
+            status=models.AttendanceStatus.PRESENT,
+        )
+        models.Attendance.objects.create(
+            lesson=future_lesson,
+            student=self.student,
+            status=models.AttendanceStatus.PRESENT,
+        )
+        balance = self.student.lessons_balance()
+        self.assertEqual(balance["billable"], 1)
+        self.assertEqual(balance["debt"], 0)
+
     def test_student_guardian_link(self) -> None:
         self.assertIn(self.parent_user, self.student.guardians.all())
 
@@ -146,6 +179,80 @@ class ModelTests(TestCase):
         self.assertTrue(first_enrollment.is_active)
         self.assertTrue(second_enrollment.is_active)
         self.assertEqual(self.student.enrollments.count(), 2)
+
+    def test_course_schedule_display(self) -> None:
+        course = models.Course.objects.create(
+            title="Алгебра",
+            description="",
+            schedule="mon,wed,fri",
+            teacher=self.teacher_user,
+        )
+        self.assertEqual(course.schedule_days, ["mon", "wed", "fri"])
+        self.assertEqual(course.schedule_display(), "Понедельник, Среда, Пятница")
+
+    def test_generate_lessons_for_course_creates_schedule(self) -> None:
+        created = models.generate_lessons_for_course(
+            self.course,
+            ["mon", "wed"],
+            start_date=date(2024, 1, 1),
+            weeks_ahead=1,
+        )
+        self.assertEqual(created, 3)
+        self.assertTrue(
+            models.Lesson.objects.filter(course=self.course, date=date(2024, 1, 1)).exists()
+        )
+        self.assertTrue(
+            models.Lesson.objects.filter(course=self.course, date=date(2024, 1, 3)).exists()
+        )
+        self.assertTrue(
+            models.Lesson.objects.filter(course=self.course, date=date(2024, 1, 8)).exists()
+        )
+        duplicate = models.generate_lessons_for_course(
+            self.course,
+            ["mon"],
+            start_date=date(2024, 1, 1),
+            weeks_ahead=0,
+        )
+        self.assertEqual(duplicate, 0)
+
+    def test_subscription_form_requires_enrollment(self) -> None:
+        enrolled_student = self.student
+        another_student = models.Student.objects.create(
+            first_name="Анна",
+            last_name="Петрова",
+        )
+        models.Enrollment.objects.create(
+            student=enrolled_student,
+            course=self.course,
+            start_date=date(2024, 1, 1),
+        )
+        other_course = models.Course.objects.create(
+            title="Физика",
+            description="",
+            teacher=self.teacher_user,
+        )
+        models.Enrollment.objects.create(
+            student=another_student,
+            course=other_course,
+            start_date=date(2024, 1, 1),
+        )
+
+        form_prefilled = SubscriptionForm(initial={"course": self.course.pk})
+        self.assertIn(enrolled_student, form_prefilled.fields["student"].queryset)
+        self.assertNotIn(another_student, form_prefilled.fields["student"].queryset)
+
+        form = SubscriptionForm(
+            data={
+                "student": another_student.pk,
+                "course": self.course.pk,
+                "lessons_included": "4",
+                "price": "4000",
+                "purchase_date": "2024-01-01",
+                "is_active": "on",
+            }
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("корректный вариант", form.errors["student"][0].lower())
 
     def test_enrollment_form_blocks_duplicate_active(self) -> None:
         models.Enrollment.objects.create(

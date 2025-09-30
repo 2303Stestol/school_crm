@@ -1,7 +1,8 @@
 {% extends "crm/base.html" %}
-{% block title %}{% if form.instance.pk %}Редактирование занятия{% else %}Новое занятие{% endif %}{% endblock %}
+{% block title %}{% if exercise %}Редактирование упражнения{% else %}Упражнение{% endif %}{% endblock %}
 {% block content %}
-  <h1>{% if form.instance.pk %}Редактирование занятия{% else %}Создание занятия{% endif %}</h1>
+  <h1>{% if exercise %}Редактирование упражнения{% else %}Упражнение{% endif %}</h1>
+  <p style="color: #5f6368;">Занятие: <strong>{{ lesson.date|date:"d.m.Y" }}</strong> — {{ lesson.course.title }}</p>
   <form method="post" class="sheet-card" style="max-width: 520px;">
     {% csrf_token %}
     {{ form.non_field_errors }}
@@ -15,13 +16,7 @@
     {% endfor %}
     <p style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
       <button class="btn" type="submit">Сохранить</button>
-      {% if form.instance.pk %}
-        <a class="btn btn-back" href="{% url 'crm:lesson_manage' form.instance.pk %}">Отмена</a>
-      {% else %}
-        {% if form.initial.course %}
-          <a class="btn btn-back" href="{% url 'crm:course_detail' form.initial.course %}">Отмена</a>
-        {% endif %}
-      {% endif %}
+      <a class="btn btn-back" href="{% url 'crm:lesson_manage' lesson.pk %}">Отмена</a>
     </p>
   </form>
 {% endblock %}
