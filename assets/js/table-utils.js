@@ -8,7 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let sortState = {};
 
     headers.forEach((header, index) => {
-      header.addEventListener('click', () => {
+      header.setAttribute('tabindex', '0');
+      header.setAttribute('aria-sort', 'none');
+
+      const sortByHeader = () => {
         const key = header.dataset.key || index.toString();
         const type = header.dataset.type || 'string';
         const direction = sortState[key] === 'asc' ? 'desc' : 'asc';
@@ -17,10 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
         headers.forEach((h) => {
           h.removeAttribute('data-active');
           h.removeAttribute('data-arrow');
+          h.setAttribute('aria-sort', 'none');
         });
 
         header.setAttribute('data-active', direction);
         header.setAttribute('data-arrow', direction === 'asc' ? '▲' : '▼');
+        header.setAttribute('aria-sort', direction === 'asc' ? 'ascending' : 'descending');
 
         const sortedRows = [...rows].sort((rowA, rowB) => {
           const cellA = rowA.children[index];
@@ -39,7 +44,16 @@ document.addEventListener('DOMContentLoaded', () => {
             : String(valueB).localeCompare(String(valueA), 'ru');
         });
 
+        rows.splice(0, rows.length, ...sortedRows);
         tbody.replaceChildren(...sortedRows);
+      };
+
+      header.addEventListener('click', sortByHeader);
+      header.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          sortByHeader();
+        }
       });
     });
 
