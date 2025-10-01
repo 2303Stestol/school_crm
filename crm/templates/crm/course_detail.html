@@ -89,6 +89,7 @@
                     <div class="lesson-actions">
                       <a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Посещаемость</a>
                       <a class="btn btn-secondary" href="{% url 'crm:lesson_update' lesson.pk %}">Редактировать</a>
+                      <a class="btn btn-danger" href="{% url 'crm:lesson_delete' lesson.pk %}">Удалить</a>
                     </div>
                   {% endif %}
                 </li>
@@ -109,6 +110,7 @@
                     <div class="lesson-actions">
                       <a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Посещаемость</a>
                       <a class="btn btn-secondary" href="{% url 'crm:lesson_update' lesson.pk %}">Редактировать</a>
+                      <a class="btn btn-danger" href="{% url 'crm:lesson_delete' lesson.pk %}">Удалить</a>
                     </div>
                   {% endif %}
                 </li>
@@ -118,69 +120,69 @@
             </ul>
           </section>
         </div>
-        <section class="lesson-table-section">
-          <div class="lesson-filters">
-            <div>
-              <label for="lesson-search">Поиск</label>
-              <input
-                id="lesson-search"
-                type="search"
-                placeholder="Дата или тема"
-                data-filter-target="#all-lessons-table"
-              />
-            </div>
-            <div class="date-range">
-              <div>
-                <label for="lesson-date-from">Дата от</label>
-                <input id="lesson-date-from" type="date" data-date-filter="from" data-filter-target="#all-lessons-table" />
-              </div>
-              <div>
-                <label for="lesson-date-to">Дата до</label>
-                <input id="lesson-date-to" type="date" data-date-filter="to" data-filter-target="#all-lessons-table" />
-              </div>
-            </div>
-          </div>
-          <div class="sheet-scroll">
-            <table class="sheet-table" id="all-lessons-table">
-              <thead>
-                <tr>
-                  <th>Дата</th>
-                  <th>Тема</th>
-                  <th>Упражнений</th>
-                  {% if can_edit %}
-                    <th>Действия</th>
-                  {% endif %}
-                </tr>
-              </thead>
-              <tbody>
-                {% for lesson in all_lessons %}
-                  <tr
-                    data-filter-value="{{ lesson.date|date:'Y-m-d' }} {{ lesson.topic }}"
-                    data-lesson-date="{{ lesson.date|date:'Y-m-d' }}"
-                  >
-                    <td>{{ lesson.date|date:"d.m.Y" }}</td>
-                    <td>{{ lesson.topic|default:"—" }}</td>
-                    <td>{{ lesson.exercises.all|length }}</td>
-                    {% if can_edit %}
-                      <td>
-                        <div class="lesson-actions">
-                          <a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Посещаемость</a>
-                          <a class="btn btn-secondary" href="{% url 'crm:lesson_update' lesson.pk %}">Редактировать</a>
-                          <a class="btn btn-danger" href="{% url 'crm:lesson_delete' lesson.pk %}">Удалить</a>
-                        </div>
-                      </td>
-                    {% endif %}
-                  </tr>
-                {% empty %}
-                  <tr>
-                    <td colspan="{% if can_edit %}4{% else %}3{% endif %}" class="course-detail__empty">Занятия ещё не созданы.</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </section>
       </section>
     </div>
+    <section class="course-detail__section lesson-table-section lesson-table-section--full">
+      <div class="lesson-filters">
+        <div>
+          <label for="lesson-search">Поиск</label>
+          <input
+            id="lesson-search"
+            type="search"
+            placeholder="Дата или тема"
+            data-filter-target="#all-lessons-table"
+          />
+        </div>
+        <div class="date-range">
+          <div>
+            <label for="lesson-date-from">Дата от</label>
+            <input id="lesson-date-from" type="date" data-date-filter="from" data-filter-target="#all-lessons-table" />
+          </div>
+          <div>
+            <label for="lesson-date-to">Дата до</label>
+            <input id="lesson-date-to" type="date" data-date-filter="to" data-filter-target="#all-lessons-table" />
+          </div>
+        </div>
+      </div>
+      <div class="sheet-scroll">
+        <table class="sheet-table" id="all-lessons-table">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Тема</th>
+              <th>Упражнений</th>
+              {% if can_edit %}
+                <th>Действия</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for lesson in all_lessons %}
+              <tr
+                data-filter-value="{{ lesson.date|date:'Y-m-d' }} {{ lesson.topic }}"
+                data-lesson-date="{{ lesson.date|date:'Y-m-d' }}"
+              >
+                <td>{{ lesson.date|date:"d.m.Y" }}</td>
+                <td>{{ lesson.topic|default:"—" }}</td>
+                <td>{{ lesson.exercises.all|length }}</td>
+                {% if can_edit %}
+                  <td>
+                    <div class="lesson-actions">
+                      <a class="btn btn-secondary" href="{% url 'crm:lesson_manage' lesson.pk %}">Посещаемость</a>
+                      <a class="btn btn-secondary" href="{% url 'crm:lesson_update' lesson.pk %}">Редактировать</a>
+                      <a class="btn btn-danger" href="{% url 'crm:lesson_delete' lesson.pk %}">Удалить</a>
+                    </div>
+                  </td>
+                {% endif %}
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="{% if can_edit %}4{% else %}3{% endif %}" class="course-detail__empty">Занятия ещё не созданы.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 {% endblock %}
